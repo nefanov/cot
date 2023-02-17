@@ -1,11 +1,7 @@
 '''
 [2023] Nikolay Efanov
-
 odg_tools module
-
-Tools for manipulation with order-dependency graphs (ODG), which are
-frequently used in compiler phase-ordering task for subsequences of 
-optimizing passes construction
+Tools for manipulation with order-dependency graphs (ODG), which are frequently used in compiler phase-ordering task for subsequences of optimizing passes construction
 '''
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -17,10 +13,15 @@ class ODGMakingMode(Enum):
     STOPLIST = 1
     ALLOWLIST = 2
     FROMPATHS = 3
+    EMPTY = 4
+    FROMGRAPH = 5
 
 
 class ODG:
-    def __init__(self, fullseq, mode=ODGMakingMode.FULLYCONNECTED):
+    def __init__(self, mode=ODGMakingMode.EMPTY):
+        self.G = nx.DiGraph()
+
+    def fromFullSeq(self, fullseq=[], mode=ODGMakingMode.FULLYCONNECTED):
         print(sorted(nx.complete_graph(len(fullseq), nx.DiGraph())))
         if mode == ODGMakingMode.FULLYCONNECTED:
             self.G = nx.complete_graph(len(fullseq), nx.DiGraph())
@@ -32,9 +33,25 @@ class ODG:
         elif mode == ODGMakingMode.ALLOWLIST:
             pass
         elif mode == ODGMakingMode.FROMPATHS:
-            pass
+            print("Please, provide the list of sequences")
         else:
             print("Unknown graph making mode")
+        return self
+
+    def fromSeqList(self, seq_list=[], mode=ODGMakingMode.FROMPATHS):
+        if mode != ODGMakingMode.FROMPATHS:
+            print("Incorrect mode")
+            return
+        self.G = nx.DiGraph()
+        for seq in seq_list:
+            for item in seq:
+                pass
+        return self
+
+
+    def fromGraph(self, Graph=None, mode=ODGMakingMode.FROMGRAPH):
+        self.G = Graph
+        return self
 
     def plot(self):
         pos = nx.spring_layout(self.G)
@@ -45,8 +62,8 @@ class ODG:
         nx.draw_networkx_edge_labels(self.G, pos, edge_labels)
         plt.show()
 
-        
-if __name__ == '__main__':
-    odg = ODG(['A', 'B', 'C'])
-    odg.plot()
-    print(odg.G.edges(data=True))
+
+odg = ODG().fromFullSeq(['A','B','C'])
+odg.plot()
+odg2 = ODG().fromGraph(Graph=odg)
+print(odg2.G.edges(data=True))
