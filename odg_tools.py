@@ -1,7 +1,11 @@
 '''
 [2023] Nikolay Efanov
+
 odg_tools module
-Tools for manipulation with order-dependency graphs (ODG), which are frequently used in compiler phase-ordering task for subsequences of optimizing passes construction
+
+Tools for manipulation with order-dependency graphs (ODG), which are
+frequently used in compiler phase-ordering task for subsequences of 
+optimizing passes construction
 '''
 import networkx as nx
 import matplotlib.pyplot as plt
