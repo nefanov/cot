@@ -61,9 +61,3 @@ class ODG:
         edge_labels = nx.get_edge_attributes(self.G, 'weight')
         nx.draw_networkx_edge_labels(self.G, pos, edge_labels)
         plt.show()
-
-
-odg = ODG().fromFullSeq(['A','B','C'])
-odg.plot()
-odg2 = ODG().fromGraph(Graph=odg)
-print(odg2.G.edges(data=True))
