@@ -18,6 +18,13 @@ class ODGMakingMode(Enum):
     FROMGRAPH = 5
 
 
+class ODGNodesFiltering(Enum):
+    THRESHOLDS = 1
+
+
+DEFAULT_SEMIDEGREE = 6
+
+
 class ODG:
     def __init__(self, mode=ODGMakingMode.EMPTY, name="odg_exp_0"):
         self.G = nx.DiGraph()
@@ -80,6 +87,34 @@ class ODG:
         self.G = Graph
         nx.set_edge_attributes(self.G, 1, 'weight')
         return self
+# algorithmic stuff -- maybe need to de separated into aggregated object
+    def getNodeSemiDegrees(self):
+        degrees = {}
+        for n in self.G.nodes:
+            degrees.update({n: (self.G.in_degree(n), self.G.out_degree(n))})
+        return degrees
+
+    def filterNodesBySemiDegrees(self, policy=ODGNodesFiltering.THRESHOLDS,
+                                 threshold = DEFAULT_SEMIDEGREE):
+        if policy != ODGNodesFiltering.THRESHOLDS:
+            print("niy,","another policies in progress")
+            return ([],[])
+        start_list = []
+        end_list = []
+        for n in self.G.nodes:
+            if self.G.in_degree(n) <= threshold:
+                start_list.append(n)
+            if self.G.out_degree(n) <= threshold:
+                end_list.append(n)
+        return (start_list,end_list)
+
+    def genSubseqList(self, policy=ODGNodesFiltering.THRESHOLDS, maxPathLen=None):
+        (starts,ends) = self.filterNodesBySemiDegrees()
+        res = []
+        for s in starts:
+            for e in ends:
+                res += nx.all_simple_paths(self.G, source=s, target=e, cutoff=maxPathLen)
+        return res
 
     def visualize(self, save_fig=False):
         pos = nx.spring_layout(self.G)
@@ -88,7 +123,7 @@ class ODG:
         nx.draw_networkx_labels(self.G, pos, labels=node_labels)
         edge_labels = nx.get_edge_attributes(self.G, 'weight')
         nx.draw_networkx_edge_labels(self.G, pos, edge_labels)
-        plt.show()
+        #plt.show()
         if save_fig:
             pdot = nx.nx_pydot.to_pydot(self.G)
             for i, edge in enumerate(pdot.get_edges()):
@@ -108,9 +143,13 @@ if __name__ == '__main__':
     odg2.addPath(['cse','C'], True)
     odg2.visualize(True)
     # fromSeqListTest
+    test3 = [['B','A'],['B','A'] , ['A','B'], ['A','B'], ['A','B'], ['A','B'],
+             ['A','B'], ['A','B'] ,['A','C'], ['A','B','C']]
+    test4 = [['B','A'],['A','B']]
     odg3 = ODG().fromGraph(nx.DiGraph())
-    odg3 = ODG().fromSeqList([['B','A'],['B','A'] , ['A','B'], ['A','B'], ['A','B'], ['A','B'], ['A','B'], ['A','B'] ,['A','C'], ['A','B','C']])
+    odg3 = ODG().fromSeqList(test3)
     print(odg3.G.edges(data=True))
     print(odg3.G.nodes)
     print(odg3.G.edges(data=True))
     odg3.visualize(True)
+    print("subslist", odg3.genSubseqList())
