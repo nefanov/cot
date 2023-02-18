@@ -22,7 +22,15 @@ class ODGNodesFiltering(Enum):
     THRESHOLDS = 1
 
 
-DEFAULT_SEMIDEGREE = 6
+class MODE(Enum):
+    RELEASE = 0
+    DEBUG = 1
+
+
+DEFAULT_SEMIDEGREE = 5
+
+
+run_mode = MODE.DEBUG
 
 
 class ODG:
@@ -68,7 +76,6 @@ class ODG:
                         self.G[seq[i-1]][seq[i]]['weight'] = self.G[seq[i-1]][seq[i]]['weight'] + 1
         return self
 
-
     def fromSeqList(self, seq_list=[], mode=ODGMakingMode.FROMPATHS):
         if mode != ODGMakingMode.FROMPATHS:
             print("Incorrect mode")
@@ -78,7 +85,6 @@ class ODG:
         self.G.add_nodes_from(nodeNames)
         for item in nodeNames:
             self.G.nodes[item].update({'passname': item})
-
         for seq in seq_list: # for each sequence in the sequences list
             self = self.addPath(seq, True)
         return self
@@ -91,7 +97,9 @@ class ODG:
     def getNodeSemiDegrees(self):
         degrees = {}
         for n in self.G.nodes:
-            degrees.update({n: (self.G.in_degree(n), self.G.out_degree(n))})
+            in_d = sum([e[2]['weight'] for e in self.G.in_edges(n, data=True)])
+            out_d = sum([e[2]['weight'] for e in self.G.out_edges(n, data=True)])
+            degrees.update({n: (in_d, out_d)})
         return degrees
 
     def filterNodesBySemiDegrees(self, policy=ODGNodesFiltering.THRESHOLDS,
@@ -102,9 +110,15 @@ class ODG:
         start_list = []
         end_list = []
         for n in self.G.nodes:
-            if self.G.in_degree(n) <= threshold:
+            edg = self.G.in_edges(n, data=True)
+            w = sum([e[2]['weight'] for e in edg])
+            if w <= threshold:
+                if run_mode == MODE.DEBUG: print(n, "is chosen for start of paths")
                 start_list.append(n)
-            if self.G.out_degree(n) <= threshold:
+            edg = self.G.out_edges(n, data=True)
+            w = sum([e[2]['weight'] for e in edg])
+            if w <= threshold:
+                if run_mode == MODE.DEBUG: print(n, "is chosen for end of paths")
                 end_list.append(n)
         return (start_list,end_list)
 
@@ -152,4 +166,4 @@ if __name__ == '__main__':
     print(odg3.G.nodes)
     print(odg3.G.edges(data=True))
     odg3.visualize(True)
-    print("subslist", odg3.genSubseqList())
+    print("list of subsequences for odg3", odg3.genSubseqList())
