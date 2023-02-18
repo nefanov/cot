@@ -5,6 +5,7 @@ Tools for manipulation with order-dependency graphs (ODG), which are frequently 
 '''
 import networkx as nx
 import matplotlib.pyplot as plt
+import pydot
 from enum import Enum
 
 
@@ -18,8 +19,9 @@ class ODGMakingMode(Enum):
 
 
 class ODG:
-    def __init__(self, mode=ODGMakingMode.EMPTY):
+    def __init__(self, mode=ODGMakingMode.EMPTY, name="odg_exp_0"):
         self.G = nx.DiGraph()
+        self.name = name
 
     def fromFullSeq(self, fullseq=[], mode=ODGMakingMode.FULLYCONNECTED):
         print(sorted(nx.complete_graph(len(fullseq), nx.DiGraph())))
@@ -28,9 +30,9 @@ class ODG:
             mapping = {}
             for i, item in enumerate(fullseq):
                 mapping.update({i : item})
-            H = nx.relabel_nodes(self.G, mapping)
+            self.G = nx.relabel_nodes(self.G, mapping)
             for n in self.G.nodes:
-                self.G.nodes[n].update({'passname': fullseq[n]})
+                self.G.nodes[n].update({'passname': n})
 
         elif mode == ODGMakingMode.STOPLIST:
             pass
@@ -79,7 +81,7 @@ class ODG:
         nx.set_edge_attributes(self.G, 1, 'weight')
         return self
 
-    def plot(self):
+    def visualize(self, save_fig=False):
         pos = nx.spring_layout(self.G)
         nx.draw(self.G, pos)
         node_labels = nx.get_node_attributes(self.G, 'passname')
@@ -87,17 +89,28 @@ class ODG:
         edge_labels = nx.get_edge_attributes(self.G, 'weight')
         nx.draw_networkx_edge_labels(self.G, pos, edge_labels)
         plt.show()
+        if save_fig:
+            pdot = nx.nx_pydot.to_pydot(self.G)
+            for i, edge in enumerate(pdot.get_edges()):
+                ek = edge.obj_dict['attributes'].get('weight')
+                edge.set_label(str(ek))
+                edge.set_color('lightblue')
+            pdot.write_png(self.name + '.png')
 
 
 if __name__ == '__main__':
-    odg = ODG().fromFullSeq(['A', 'B', 'C'])
-    odg2 = ODG().fromGraph(Graph=odg.G)
-    odg2.addPath([0,1], True)
+    # fullSeqTest
+    odg = ODG(name="FromFullSeqTest").fromFullSeq(['constantfold', 'cse', 'C'])
+    odg.visualize(True)
 
-
+    # fromGraphTest + pathTest
+    odg2 = ODG(name="FromGraphTest").fromGraph(nx.DiGraph())
+    odg2.addPath(['cse','C'], True)
+    odg2.visualize(True)
+    # fromSeqListTest
     odg3 = ODG().fromGraph(nx.DiGraph())
-    odg3 = ODG().fromSeqList([['A','B'],['A','B'] , ['A','B'], ['A','B'], ['A','B'], ['A','B'], ['A','B'], ['A','B'] ,['A','C'], ['A','B','C']])
+    odg3 = ODG().fromSeqList([['B','A'],['B','A'] , ['A','B'], ['A','B'], ['A','B'], ['A','B'], ['A','B'], ['A','B'] ,['A','C'], ['A','B','C']])
     print(odg3.G.edges(data=True))
     print(odg3.G.nodes)
     print(odg3.G.edges(data=True))
-    odg3.plot()
+    odg3.visualize(True)
