@@ -27,7 +27,7 @@ class MODE(Enum):
     DEBUG = 1
 
 
-DEFAULT_SEMIDEGREE = 5
+DEFAULT_SEMIDEGREE = 1
 
 
 run_mode = MODE.DEBUG
@@ -160,8 +160,9 @@ if __name__ == '__main__':
     test3 = [['B','A'],['B','A'] , ['A','B'], ['A','B'], ['A','B'], ['A','B'],
              ['A','B'], ['A','B'] ,['A','C'], ['A','B','C']]
     test4 = [['B','A'],['A','B']]
+    test5 = [['A', 'B'], ['B', 'C'],['C','D','B']]
     odg3 = ODG().fromGraph(nx.DiGraph())
-    odg3 = ODG().fromSeqList(test3)
+    odg3 = ODG().fromSeqList(test5)
     print(odg3.G.edges(data=True))
     print(odg3.G.nodes)
     print(odg3.G.edges(data=True))
