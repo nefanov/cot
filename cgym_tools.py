@@ -3,9 +3,29 @@ import compiler_gym                      # imports the CompilerGym environments
 from enum import Enum
 
 
-class characterMode(Enum):
+class CharacterMode(Enum):
     PROGRAML = 0
-    IR2VEC = "ir2vec"
+    IR2VECFA = "Ir2vecFlowAware"
+
+
+class Experiment:
+    def __init__(self, compiler, bench, observation_space, reward_space, name="exp1"):
+        self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+            "llvm-v0",  # selects the compiler to use
+            benchmark=bench,  # selects the program to compile
+            observation_space=observation_space,  # selects the observation space
+            reward_space=reward_space,  # selects the optimization target
+        )
+        self.name = name
+        self.env.reset()  # starts a new compilation session
+
+    def experimentReset(self):
+        self.env.reset()
+        return
+
+    def getActions(self):
+        return self.env.action_spaces[0].names
+
 
 
 def test_packages_integrity():
@@ -28,6 +48,7 @@ def test_packages_integrity():
     print(done)
     env.close()
 
+
 def test_cycle():
     print("=====TEST #2=====")
     env = compiler_gym.make(  # creates a new environment (same as gym.make)
@@ -48,9 +69,22 @@ def test_cycle():
             break
         episode_reward += reward
         print(f"Step {i}, quality={episode_reward:.3%}")
-    print("====Dump action space====")
-    print(env.action_spaces[0].names)
+
+
+def test_experiment():
+    ex = Experiment(
+        "llvm-v0",  # selects the compiler to use
+        bench="cbench-v1/qsort",  # selects the program to compile
+        observation_space="Ir2vecFlowAware",  # selects the observation space
+        reward_space="IrInstructionCountOz",
+    )
+    print("=====DUMP ACTIONS=====")
+    print(ex.getActions())
+    return
 
 if __name__ == '__main__':
     test_packages_integrity()
-    print("Test 100 times Ir2Vec")
+    print("Test 200 times Ir2Vec")
+    test_cycle()
+    print("====Dump action space====")
+    test_experiment()
