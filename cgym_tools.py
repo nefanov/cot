@@ -48,7 +48,8 @@ def test_cycle():
             break
         episode_reward += reward
         print(f"Step {i}, quality={episode_reward:.3%}")
-
+    print("====Dump action space====")
+    print(env.action_spaces[0].names)
 
 if __name__ == '__main__':
     test_packages_integrity()
