@@ -8,11 +8,15 @@ from compiler_gym.wrappers import CompilerEnvWrapper
 
 class RuntimePointEstimateReward(CompilerEnvWrapper):
     """LLVM wrapper that uses a point estimate of program runtime as reward.
-
+    RuntimePointEstimateReward --> RuntimeReward --> Reward --> "runtime" obs value
     This class wraps an LLVM environment and registers a new runtime reward
-    space. Runtime is estimated from one or more runtime measurements, after
+    space*. Runtime is estimated from one or more runtime measurements, after
     optionally running one or more warmup runs. At each step, reward is the
     change in runtime estimate from the runtime estimate at the previous step.
+    
+    *RuntimeReward(Reward): an example reward that uses changes in the "runtime" observation value
+    to compute incremental reward.
+    
     """
     def __init__(
         self,
