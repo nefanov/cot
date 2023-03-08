@@ -25,6 +25,7 @@ class Experiment:
             )
             if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
                 self.env = RuntimePointEstimateReward(self.env)
+                self.env.reset()
             else:
                 print("Bad reward wrapper")
                 sys.exit(1)
@@ -93,12 +94,17 @@ def test_cycle():
 def test_experiment():
     ex = Experiment(
         "llvm-v0",  # selects the compiler to use
-        bench="cbench-v1/qsort",  # selects the program to compile
+        bench="cbench-v1/dijkstra",  # selects the program to compile
         observation_space="Ir2vecFlowAware",  # selects the observation space
         reward_space= RewardMode.RUNTIMEPOINTESTIMATE,
     )
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
+    print("=====REWARDS TESTING=====")
+    ex.env.reset()
+    for i in range(500):
+        observation, reward, done, info = ex.env.step(ex.env.action_space.sample())
+        print("Reward after",i,":", reward)
     return
 
 if __name__ == '__main__':
@@ -107,3 +113,4 @@ if __name__ == '__main__':
     #test_cycle()
     print("====Dump action space====")
     test_experiment()
+    sys.exit(0)
