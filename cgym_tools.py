@@ -20,7 +20,7 @@ class Experiment:
                 "llvm-v0",  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
-                reward_space=None,  # selects the optimization target
+                reward_space="ObjectTextSizeBytes",  # selects the optimization target
             )
             if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
                 self.env = RuntimePointEstimateReward(self.env)
@@ -32,7 +32,7 @@ class Experiment:
                 "llvm-v0",  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
-                reward_space=None,  # selects the optimization target
+                reward_space=reward_space,  # selects the optimization target
             )
         self.name = name
         self.env.reset()  # starts a new compilation session
