@@ -4,7 +4,34 @@ import numpy as np
 
 from compiler_gym.envs.llvm import LlvmEnv
 from compiler_gym.spaces import RuntimeReward
+from compiler_gym.spaces import Reward
 from compiler_gym.wrappers import CompilerEnvWrapper
+
+class SizeReward(Reward):
+    """ Incremental size reward
+    """
+
+    def __init__(self):
+
+        super().__init__(
+            name="OTextSizeB",
+            observation_spaces=["ObjectTextSizeBytes"],
+            default_value=0,
+            default_negates_returns=True,
+            deterministic=False,
+            platform_dependent=True,
+        )
+        self.baseline_size = 0
+
+    def reset(self, benchmark: str, observation_view):
+        del benchmark  # unused
+        self.baseline_runtime = observation_view["ObjectTextSizeBytes"]
+
+    def update(self, action, observations, observation_view):
+        del action  # unused
+        del observation_view  # unused
+        return float(self.baseline_size - observations[0]) / self.baseline_size
+
 
 class RuntimePointEstimateReward(CompilerEnvWrapper):
     """LLVM wrapper that uses a point estimate of program runtime as reward.
@@ -47,6 +74,11 @@ class RuntimePointEstimateReward(CompilerEnvWrapper):
                 estimator=estimator,
             )
         )
+        #self.env.unwrapped.reward.add_space(
+        #    SizeReward(
+        #
+        #    )
+        #)
         self.env.unwrapped.reward_space = "runtime"
 
         self.env.unwrapped.runtime_observation_count = runtime_count

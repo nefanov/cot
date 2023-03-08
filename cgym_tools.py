@@ -1,6 +1,7 @@
 import sys, os
 import compiler_gym                      # imports the CompilerGym environments
 from enum import Enum
+from rewards_env_wrappers import RuntimePointEstimateReward
 
 
 class CharacterMode(Enum):
@@ -8,14 +9,31 @@ class CharacterMode(Enum):
     IR2VECFA = "Ir2vecFlowAware"
 
 
+class RewardMode(Enum):
+    ObjectTextSizeB = "ObjectTextSizeBytes"
+    RUNTIMEPOINTESTIMATE = "rper"
+
 class Experiment:
     def __init__(self, compiler, bench, observation_space, reward_space, name="exp1"):
-        self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-            "llvm-v0",  # selects the compiler to use
-            benchmark=bench,  # selects the program to compile
-            observation_space=observation_space,  # selects the observation space
-            reward_space=reward_space,  # selects the optimization target
-        )
+        if reward_space in RewardMode:
+            self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+                "llvm-v0",  # selects the compiler to use
+                benchmark=bench,  # selects the program to compile
+                observation_space=observation_space,  # selects the observation space
+                reward_space=None,  # selects the optimization target
+            )
+            if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
+                self.env = RuntimePointEstimateReward(self.env)
+            else:
+                print("Bad reward wrapper")
+                sys.exit(1)
+        else:
+            self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+                "llvm-v0",  # selects the compiler to use
+                benchmark=bench,  # selects the program to compile
+                observation_space=observation_space,  # selects the observation space
+                reward_space=None,  # selects the optimization target
+            )
         self.name = name
         self.env.reset()  # starts a new compilation session
 
@@ -76,7 +94,7 @@ def test_experiment():
         "llvm-v0",  # selects the compiler to use
         bench="cbench-v1/qsort",  # selects the program to compile
         observation_space="Ir2vecFlowAware",  # selects the observation space
-        reward_space="IrInstructionCountOz",
+        reward_space= RewardMode.RUNTIMEPOINTESTIMATE,
     )
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
@@ -84,7 +102,7 @@ def test_experiment():
 
 if __name__ == '__main__':
     test_packages_integrity()
-    print("Test 200 times Ir2Vec")
-    test_cycle()
+    #print("Test 200 times Ir2Vec")
+    #test_cycle()
     print("====Dump action space====")
     test_experiment()
