@@ -13,6 +13,7 @@ class RewardMode(Enum):
     ObjectTextSizeB = "ObjectTextSizeBytes"
     RUNTIMEPOINTESTIMATE = "rper"
 
+
 class Experiment:
     def __init__(self, compiler, bench, observation_space, reward_space, name="exp1"):
         if reward_space in RewardMode:
