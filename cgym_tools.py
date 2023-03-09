@@ -94,17 +94,33 @@ def test_cycle():
 def test_experiment():
     ex = Experiment(
         "llvm-v0",  # selects the compiler to use
-        bench="cbench-v1/dijkstra",  # selects the program to compile
-        observation_space="Ir2vecFlowAware",  # selects the observation space
+        bench="cbench-v1/crc32",  # selects the program to compile
+        observation_space="ObjectTextSizeBytes",  # selects the observation space
         reward_space= RewardMode.RUNTIMEPOINTESTIMATE,
     )
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
-    ex.env.reset()
+
+    episode_reward = 0.0
+    for i in range(100):
+        action = ex.env.action_space.sample()
+        # print("A", action)
+        print("Action  #", action, ":", ex.env.action_spaces[0].names[int(action.__repr__())])
+        observation, reward, done, info = ex.env.step(action)
+        if done:
+            print("DONE!!!")
+            break
+        episode_reward += reward
+        print(f"Step {i}, quality={episode_reward:.3%}")
+
+        ex.env.reset()
     for i in range(500):
         observation, reward, done, info = ex.env.step(ex.env.action_space.sample())
         print("Reward after",i,":", reward)
+        if done:
+            print("DONE!!!")
+            break
     return
 
 if __name__ == '__main__':
