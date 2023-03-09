@@ -104,12 +104,12 @@ class RuntimeAndSizeReward(Reward):
         warmup_count: int,
         estimator: Callable[[Iterable[float]], float],
         default_value: int = 0,
-        size_observation_type: str = "ObjectTextSizeBytes",
+        size_observation_type: str = "TextSizeBytes",
         is_debug: bool = True
     ):
         super().__init__(
             name="runtime",
-            observation_spaces=["Runtime", size_observation_type],
+            observation_spaces=["Runtime",size_observation_type], #, size_observation_type],
             default_value=default_value,
             min=None,
             max=None,
@@ -228,13 +228,8 @@ class RuntimePointEstimateReward(CompilerEnvWrapper):
                 estimator=estimator,
             )
         )
-        self.env.unwrapped.reward.add_space(
-            SizeReward(
 
-            )
-        )
         self.env.unwrapped.reward_space = "runtime"
-
         self.env.unwrapped.runtime_observation_count = runtime_count
         self.env.unwrapped.runtime_warmup_runs_count = warmup_count
 

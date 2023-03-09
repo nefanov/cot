@@ -16,26 +16,35 @@ class RewardMode(Enum):
 
 class Experiment:
     def __init__(self, compiler, bench, observation_space, reward_space, name="exp1"):
-        if reward_space in RewardMode:
+        if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
+            # RS wrapped around CompilerGym RS
             self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
                 "llvm-v0",  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
                 reward_space="ObjectTextSizeBytes",  # selects the optimization target
             )
-            if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
-                self.env = RuntimePointEstimateReward(self.env)
-                self.env.reset()
-            else:
-                print("Bad reward wrapper")
-                sys.exit(1)
+
+            self.env = RuntimePointEstimateReward(self.env)
+            self.env.reset()
+
+        elif reward_space == "External":
+            # external RS
+            self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+                "llvm-v0",  # selects the compiler to use
+                benchmark=bench,  # selects the program to compile
+                observation_space=observation_space,  # selects the observation space
+                #reward_space=reward_space,  # selects the optimization target
+            )
         else:
+            # CompilerGym RS
             self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
                 "llvm-v0",  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
                 reward_space=reward_space,  # selects the optimization target
             )
+
         self.name = name
         self.env.reset()  # starts a new compilation session
 
@@ -96,31 +105,27 @@ def test_experiment():
         "llvm-v0",  # selects the compiler to use
         bench="cbench-v1/crc32",  # selects the program to compile
         observation_space="ObjectTextSizeBytes",  # selects the observation space
-        reward_space= RewardMode.RUNTIMEPOINTESTIMATE,
+        reward_space="External" #RewardMode.RUNTIMEPOINTESTIMATE,
     )
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
 
     episode_reward = 0.0
-    for i in range(100):
+    for i in range(1000):
         action = ex.env.action_space.sample()
         # print("A", action)
         print("Action  #", action, ":", ex.env.action_spaces[0].names[int(action.__repr__())])
-        observation, reward, done, info = ex.env.step(action)
+        observation, reward, done, info = ex.env.step(action,
+                 observation_spaces = [ ex.env.observation.spaces["Ir2vecFlowAware"],
+                                        ex.env.observation.spaces["TextSizeBytes"],
+                                        ex.env.observation.spaces["Runtime"]])
+        print("OBS-RW:", observation[1:], reward)
         if done:
             print("DONE!!!")
             break
-        episode_reward += reward
-        print(f"Step {i}, quality={episode_reward:.3%}")
 
-        ex.env.reset()
-    for i in range(500):
-        observation, reward, done, info = ex.env.step(ex.env.action_space.sample())
-        print("Reward after",i,":", reward)
-        if done:
-            print("DONE!!!")
-            break
+        print(f"Step {i}, quality={episode_reward:.3%}")
     return
 
 if __name__ == '__main__':
