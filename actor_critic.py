@@ -10,9 +10,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from absl import app, flags
 from torch.distributions import Categorical
 
+#compiler_gym dependency:
+import compiler_gym
+from compiler_gym.wrappers import ConstrainedCommandline, TimeLimit
+'''
 flags.DEFINE_integer("episode_len", 5, "Number of transitions per episode.")
 flags.DEFINE_integer("hidden_size", 64, "Latent vector size.")
 flags.DEFINE_integer("log_interval", 100, "Episodes per log output.")
@@ -20,12 +23,26 @@ flags.DEFINE_integer("iterations", 1, "Times to redo entire training.")
 flags.DEFINE_float("exploration", 0.0, "Rate to explore random transitions.")
 flags.DEFINE_float("mean_smoothing", 0.95, "Smoothing factor for mean normalization.")
 flags.DEFINE_float("std_smoothing", 0.4, "Smoothing factor for std dev normalization.")
+'''
+flags = {}
+flags.update({"episode_len": 5}) #, "Number of transitions per episode."
+flags.update({"hidden_size": 64}) #"Latent vector size."
+flags.update({"log_interval": 100})# "Episodes per log output."
+flags.update({"iterations": 1}) #"Times to redo entire training."
+flags.update({"exploration": 0.0}) #"Rate to explore random transitions."
+flags.update({"mean_smoothing": 0.95}) #"Smoothing factor for mean normalization."
+flags.update({"std_smoothing": 0.4}) #"Smoothing factor for std dev normalization."
+flags.update({"learning_rate": 0.008})
+flags.update({"episodes": 2000})
+flags.update({"seed": 0})
+
+
 
 eps = np.finfo(np.float32).eps.item()
 
 SavedAction = namedtuple("SavedAction", ["log_prob", "value"])
 
-FLAGS = flags.FLAGS
+FLAGS = flags
 
 # === statistical values -- move to algorithms.statistical
 class MovingExponentialAverage:
@@ -67,13 +84,13 @@ class HistoryObservation(gym.ObservationWrapper):
     def reset(self, *args, **kwargs):
         self._steps_taken = 0
         self._state = np.zeros(
-            (FLAGS.episode_len - 1, self.action_space.n), dtype=np.int32
+            (FLAGS['episode_len'] - 1, self.action_space.n), dtype=np.int32
         )
         return super().reset(*args, **kwargs)
 
     def step(self, action: int):
-        assert self._steps_taken < FLAGS.episode_len
-        if self._steps_taken < FLAGS.episode_len - 1:
+        assert self._steps_taken < FLAGS['episode_len']
+        if self._steps_taken < FLAGS['episode_len'] - 1:
             # Don't need to record the last action since there are no
             # further decisions to be made at that point, so that
             # information need never be presented to the model.
@@ -93,17 +110,17 @@ class BasicPolicy(nn.Module):
     def __init__(self, sz, PARAMS=FLAGS):
         super().__init__()
         self.affine1 = nn.Linear(
-            (FLAGS.episode_len - 1) * sz, PARAMS.hidden_size
+            (PARAMS['episode_len'] - 1) * sz, PARAMS['hidden_size']
         )
-        self.affine2 = nn.Linear(PARAMS.hidden_size, PARAMS.hidden_size)
-        self.affine3 = nn.Linear(PARAMS.hidden_size, PARAMS.hidden_size)
-        self.affine4 = nn.Linear(PARAMS.hidden_size, PARAMS.hidden_size)
+        self.affine2 = nn.Linear(PARAMS['hidden_size'], PARAMS['hidden_size'])
+        self.affine3 = nn.Linear(PARAMS['hidden_size'], PARAMS['hidden_size'])
+        self.affine4 = nn.Linear(PARAMS['hidden_size'], PARAMS['hidden_size'])
 
         # Actor's layer
-        self.action_head = nn.Linear(PARAMS.hidden_size, sz)
+        self.action_head = nn.Linear(PARAMS['hidden_size'], sz)
 
         # Critic's layer
-        self.value_head = nn.Linear(PARAMS.hidden_size, 1)
+        self.value_head = nn.Linear(PARAMS['hidden_size'], 1)
 
         # Action & reward buffer
         self.saved_actions: List[SavedAction] = []
@@ -111,8 +128,8 @@ class BasicPolicy(nn.Module):
 
         # Keep exponential moving average of mean and standard
         # deviation for use in normalization of the input.
-        self.moving_mean = MovingExponentialAverage(PARAMS.mean_smoothing)
-        self.moving_std = MovingExponentialAverage(PARAMS.std_smoothing)
+        self.moving_mean = MovingExponentialAverage(PARAMS['mean_smoothing'])
+        self.moving_std = MovingExponentialAverage(PARAMS['std_smoothing'])
 
     def forward(self, x):
         """Forward of both actor and critic"""
@@ -234,20 +251,23 @@ def finish_episode(model, optimizer) -> float:
 
 def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=lambda a: math.sqrt(sum([i*i for i in a[1:]]))):
     model = BasicPolicy(len(env.action_spaces[0].names), PARAMS=PARAMS)
-    optimizer = optim.Adam(model.parameters(), lr=PARAMS.learning_rate) # modify it
+    optimizer = optim.Adam(model.parameters(), lr=PARAMS['learning_rate']) # modify it
     # only for debug statistics
     max_ep_reward = -float("inf")
     avg_reward = MovingExponentialAverage(0.95)
     avg_loss = MovingExponentialAverage(0.95)
-    for episode in range(1, FLAGS.episodes + 1):
+    for episode in range(1, PARAMS['episodes'] + 1):
         # Reset environment and episode reward.
         state = env.reset()
         ep_reward = 0
         while True:
             # Select action from policy.
-            action = select_action(model, state, PARAMS.exploration)
+            action = select_action(model, state, PARAMS['exploration'])
             # Take the action
-            state, reward, done, _ = env.step(action)
+            state, reward, done, _ = env.step(action, observation_spaces = [ env.observation.spaces["Ir2vecFlowAware"],
+                                        env.observation.spaces["TextSizeBytes"],
+                                        env.observation.spaces["Autophase"]])
+            print("OBS-RW:", state[1:], reward)
             # reward calculation
             reward = reward_estimator(state)
             # append reward to the model
@@ -267,8 +287,8 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=lambda a: math.sqrt(sum
         # Log statistics.
         if (
                 episode == 1
-                or episode % FLAGS.log_interval == 0
-                or episode == FLAGS.episodes
+                or episode % FLAGS['log_interval'] == 0
+                or episode == FLAGS['episodes']
         ):
             print(
                 f"Episode {episode}\t"
@@ -286,4 +306,58 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=lambda a: math.sqrt(sum
     # is more random and noisy, while the average reward indicates how
     # well the model is working on a consistent basis.
     return avg_reward.value
+
+
+def make_env(PARAMS=FLAGS):
+    env  = compiler_gym.make(  # creates a partially-empty env
+                "llvm-v0",  # selects the compiler to use
+                benchmark="cbench-v1/qsort",  # selects the program to compile
+                observation_space="Runtime",  # default observation space
+                reward_space=None,  # in future selects the optimization target
+            )
+
+    env = TimeLimit(env, max_episode_steps=5)
+    #env = HistoryObservation(env)
+    return env
+
+
+def main():
+    """Main entry point."""
+
+
+    torch.manual_seed(0)
+    random.seed(0)
+
+    with make_env() as env:
+        print(f"Seed: {0}")
+        print(f"Episode length: {5}")
+        FLAGS['iterations'] = 10
+        if FLAGS['iterations'] == 1:
+            TrainActorCritic(env)
+            return
+
+        # Performance varies greatly with random initialization and
+        # other random choices, so run the process multiple times to
+        # determine the distribution of outcomes.
+        performances = []
+        for i in range(1, FLAGS['iterations'] + 1):
+            print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
+            performances.append(TrainActorCritic(env))
+
+        print("\n*** Summary")
+        print(f"Final performances: {performances}\n")
+        print(f"  Best performance: {max(performances):.2f}")
+        print(f"Median performance: {statistics.median(performances):.2f}")
+        print(f"   Avg performance: {statistics.mean(performances):.2f}")
+        print(f" Worst performance: {min(performances):.2f}")
+
+
+def test_run_actor_critic_smoke_test():
+    main()
+
+
+if __name__ == "__main__":
+    test_run_actor_critic_smoke_test()
+
+
 

@@ -112,6 +112,7 @@ def test_experiment():
     print("=====REWARDS TESTING=====")
 
     episode_reward = 0.0
+    print(ex.env.observation.spaces)
     for i in range(1000):
         action = ex.env.action_space.sample()
         # print("A", action)
