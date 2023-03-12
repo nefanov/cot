@@ -1,7 +1,7 @@
 import math
 import random
 import statistics
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from typing import List
 import numpy as np
 
@@ -14,35 +14,27 @@ from torch.distributions import Categorical
 
 #compiler_gym dependency:
 import compiler_gym
-from compiler_gym.wrappers import ConstrainedCommandline, TimeLimit
-'''
-flags.DEFINE_integer("episode_len", 5, "Number of transitions per episode.")
-flags.DEFINE_integer("hidden_size", 64, "Latent vector size.")
-flags.DEFINE_integer("log_interval", 100, "Episodes per log output.")
-flags.DEFINE_integer("iterations", 1, "Times to redo entire training.")
-flags.DEFINE_float("exploration", 0.0, "Rate to explore random transitions.")
-flags.DEFINE_float("mean_smoothing", 0.95, "Smoothing factor for mean normalization.")
-flags.DEFINE_float("std_smoothing", 0.4, "Smoothing factor for std dev normalization.")
-'''
+from compiler_gym.wrappers import TimeLimit
+
 flags = {}
-flags.update({"episode_len": 5}) #, "Number of transitions per episode."
-flags.update({"hidden_size": 64}) #"Latent vector size."
-flags.update({"log_interval": 100})# "Episodes per log output."
-flags.update({"iterations": 1}) #"Times to redo entire training."
-flags.update({"exploration": 0.0}) #"Rate to explore random transitions."
-flags.update({"mean_smoothing": 0.95}) #"Smoothing factor for mean normalization."
-flags.update({"std_smoothing": 0.4}) #"Smoothing factor for std dev normalization."
+flags.update({"episode_len": 5})  #"Number of transitions per episode."
+flags.update({"hidden_size": 64})  #"Latent vector size."
+flags.update({"log_interval": 100})  #"Episodes per log output."
+flags.update({"iterations": 1})  #"Times to redo entire training."
+flags.update({"exploration": 0.0})  #"Rate to explore random transitions."
+flags.update({"mean_smoothing": 0.95})  #"Smoothing factor for mean normalization."
+flags.update({"std_smoothing": 0.4})  #"Smoothing factor for std dev normalization."
 flags.update({"learning_rate": 0.008})
 flags.update({"episodes": 2000})
 flags.update({"seed": 0})
-
+FLAGS = flags
 
 
 eps = np.finfo(np.float32).eps.item()
 
 SavedAction = namedtuple("SavedAction", ["log_prob", "value"])
 
-FLAGS = flags
+
 
 # === statistical values -- move to algorithms.statistical
 class MovingExponentialAverage:
@@ -64,16 +56,20 @@ class MovingExponentialAverage:
 
 
 class HistoryObservation(gym.ObservationWrapper):
-    """For the input representation (state), if there are N possible
+    """
+    This wrapper implements very simple characterization space:
+    For the input representation (state), if there are N possible
     actions, then an action x is represented by a one-hot vector V(x)
     with N entries. A sequence of M actions (x, y, ...) is represented
     by an MxN matrix of 1-hot vectors (V(x), V(y), ...). Actions that
     have not been taken yet are represented as the zero vector. This
     way the input does not have a variable size since each episode has
     a fixed number of actions.
+
+    Also, it supports multi-observation set by the parameter "hetero_observations_names"
     """
 
-    def __init__(self, env):
+    def __init__(self, env, hetero_observations_names=OrderedDict()):
         super().__init__(env=env)
         self.observation_space = gym.spaces.Box(
             low=np.full(len(env.action_spaces[0].names), 0, dtype=np.float32),
@@ -81,13 +77,31 @@ class HistoryObservation(gym.ObservationWrapper):
             dtype=np.float32,
         )
         self.env = env
+        self.hetero_os = hetero_observations_names
 
     def reset(self, *args, **kwargs):
+        def reset_by_type(stmt):
+            if isinstance(stmt, int):
+                return 0
+            elif isinstance(stmt,(float)):
+                return 0.0
+            else:
+                try:
+                    return np.zeros(stmt.size)
+                except Exception as e:
+                    print("Exception is happened during the observation space", stmt, "reset:", e)
+                    return None
+            return
+
         self._steps_taken = 0
         self._state = np.zeros(
             (FLAGS['episode_len'] - 1, self.action_space.n), dtype=np.int32
         )
         super().reset(*args, **kwargs)
+        reset_state = [self._state]
+        for k,v in self.hetero_os.items():
+            reset_state.append(reset_by_type(v))
+
         return [self._state, 0, np.zeros(1)] # should be specified by certain ObservationSpaces
 
     def step(self, action: int):
@@ -99,11 +113,11 @@ class HistoryObservation(gym.ObservationWrapper):
             self._state[self._steps_taken][action] = 1
         self._steps_taken += 1
         observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
+
         heterog_obs, b, c, d = self.env.step(action, observation_spaces=[
                                                   self.env.observation.spaces["TextSizeBytes"],
                                                   self.env.observation.spaces["Runtime"]])
         observation = [observable_a, heterog_obs[0], heterog_obs[1]]
-
 
         return observation, b, c, d
 
@@ -323,7 +337,10 @@ def make_env(PARAMS=FLAGS):
             )
 
     env = TimeLimit(env, max_episode_steps=5)
-    env = HistoryObservation(env)
+    o = OrderedDict()
+    o["TextSizeBytes"] = 0
+    o["Runtime"]= np.zeros(1)
+    env = HistoryObservation(env, o)
     return env
 
 
@@ -331,8 +348,8 @@ def main():
     """Main entry point."""
 
 
-    torch.manual_seed(0)
-    random.seed(0)
+    torch.manual_seed(FLAGS['seed'])
+    random.seed(FLAGS['seed'])
 
     with make_env() as env:
         print(f"Seed: {0}")
