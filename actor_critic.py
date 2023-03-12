@@ -80,13 +80,15 @@ class HistoryObservation(gym.ObservationWrapper):
             high=np.full(len(env.action_spaces[0].names), float("inf"), dtype=np.float32),
             dtype=np.float32,
         )
+        self.env = env
 
     def reset(self, *args, **kwargs):
         self._steps_taken = 0
         self._state = np.zeros(
             (FLAGS['episode_len'] - 1, self.action_space.n), dtype=np.int32
         )
-        return super().reset(*args, **kwargs)
+        super().reset(*args, **kwargs)
+        return [self._state, 0, np.zeros(1)] # should be specified by certain ObservationSpaces
 
     def step(self, action: int):
         assert self._steps_taken < FLAGS['episode_len']
@@ -96,8 +98,14 @@ class HistoryObservation(gym.ObservationWrapper):
             # information need never be presented to the model.
             self._state[self._steps_taken][action] = 1
         self._steps_taken += 1
+        observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
+        heterog_obs, b, c, d = self.env.step(action, observation_spaces=[
+                                                  self.env.observation.spaces["TextSizeBytes"],
+                                                  self.env.observation.spaces["Runtime"]])
+        observation = [observable_a, heterog_obs[0], heterog_obs[1]]
 
-        return super().step(action)
+
+        return observation, b, c, d
 
     def observation(self, observation):
         return self._state
@@ -262,11 +270,9 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=lambda a: math.sqrt(sum
         ep_reward = 0
         while True:
             # Select action from policy.
-            action = select_action(model, state, PARAMS['exploration'])
+            action = select_action(model, state[0], PARAMS['exploration'])
             # Take the action
-            state, reward, done, _ = env.step(action, observation_spaces = [ env.observation.spaces["Ir2vecFlowAware"],
-                                        env.observation.spaces["TextSizeBytes"],
-                                        env.observation.spaces["Autophase"]])
+            state, reward, done, _ = env.step(action)
             print("OBS-RW:", state[1:], reward)
             # reward calculation
             reward = reward_estimator(state)
@@ -312,12 +318,12 @@ def make_env(PARAMS=FLAGS):
     env  = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark="cbench-v1/qsort",  # selects the program to compile
-                observation_space="Runtime",  # default observation space
+                observation_space=None,  # default observation space
                 reward_space=None,  # in future selects the optimization target
             )
 
     env = TimeLimit(env, max_episode_steps=5)
-    #env = HistoryObservation(env)
+    env = HistoryObservation(env)
     return env
 
 
