@@ -79,6 +79,7 @@ class HistoryObservation(gym.ObservationWrapper):
         )
         self.env = env
         self.hetero_os = hetero_observations_names
+        self.hetero_os_baselines = list()
 
     def reset(self, *args, **kwargs):
         self._steps_taken = 0
@@ -88,9 +89,11 @@ class HistoryObservation(gym.ObservationWrapper):
         super().reset(*args, **kwargs) # drop the environment state
         reset_state = [self._state] # add dropped history diagram as state_{0}
         for k,_ in self.hetero_os.items():
-            reset_state.append(self.env.observation[k]) # append dropped {observation space}_i as state_{i},i \in 1..len
+            obs = self.env.observation[k]
+            self.hetero_os_baselines.append(obs)
+            reset_state.append(obs) # append dropped {observation space}_i as state_{i},i \in 1..len
             if FLAGS['is_debug']:
-                print("Reset: add baseline observation for", k , ":", self.env.observation[k])
+                print("Reset: add baseline observation for", k , ":", obs)
 
         return reset_state # should be specified by certain ObservationSpaces
 
@@ -339,8 +342,6 @@ def make_env(extra_observation_spaces=None, benchmark=None):
 
 def main():
     """Main entry point."""
-
-
     torch.manual_seed(FLAGS['seed'])
     random.seed(FLAGS['seed'])
 
@@ -368,9 +369,5 @@ def main():
         print(f" Worst performance: {min(performances):.2f}")
 
 
-def test_run_actor_critic_smoke_test():
-    main()
-
-
 if __name__ == "__main__":
-    test_run_actor_critic_smoke_test()
+    main()
