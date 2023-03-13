@@ -316,10 +316,12 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=lambda a: math.sqrt(sum
     return avg_reward.value
 
 
-def make_env(extra_observation_spaces=None):
+def make_env(extra_observation_spaces=None, benchmark=None):
+    if benchmark is None:
+        benchmark = "cbench-v1/dijkstra"
     env  = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
-                benchmark="cbench-v1/qsort",  # selects the program to compile
+                benchmark=benchmark,  # selects the program to compile
                 observation_space=None,  # default observation space
                 reward_space=None,  # in future selects the optimization target
             )
