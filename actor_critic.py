@@ -28,9 +28,9 @@ flags.update({"exploration": 0.0})  #"Rate to explore random transitions."
 flags.update({"mean_smoothing": 0.95})  #"Smoothing factor for mean normalization."
 flags.update({"std_smoothing": 0.4})  #"Smoothing factor for std dev normalization."
 flags.update({"learning_rate": 0.008})
-flags.update({"episodes": 2000})
+flags.update({"episodes": 1000})
 flags.update({"seed": 0})
-flags.update({"is_debug": True})
+flags.update({"is_debug": False})
 FLAGS = flags
 
 
@@ -276,13 +276,15 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold)
         # Reset environment and episode reward.
         state = env.reset()
         ep_reward = 0
+        action_log=list()
         while True:
             # Select action from policy.
             action = select_action(model, state[0], PARAMS['exploration'])
             # Take the action
+            action_log.append(env.action_spaces[0].names[action])
             state, reward, done, _ = env.step(action)
             # reward calculation
-            reward = reward_estimator(env.hetero_os_baselines[0], state[1], env.hetero_os_baselines[0] ,state[2][0])
+            reward = reward_estimator(env.hetero_os_baselines[0], state[1], env.hetero_os_baselines[0], state[2][0])
             if FLAGS['is_debug']:
                 print("OBS-RW:", state[1:], "; Reward =", reward)
             # append reward to the model
@@ -293,7 +295,7 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold)
 
             # Perform back propagation.
         loss = finish_episode(model, optimizer)
-
+        print("Action log", action_log)
         # Update statistics.
         max_ep_reward = max(max_ep_reward, ep_reward)
         avg_reward.next(ep_reward)
@@ -352,7 +354,6 @@ def main():
     with make_env() as env:
         print(f"Seed: {0}")
         print(f"Episode length: {5}")
-        FLAGS['iterations'] = 10
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
