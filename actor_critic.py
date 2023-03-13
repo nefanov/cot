@@ -103,10 +103,8 @@ class HistoryObservation(gym.ObservationWrapper):
             self._state[self._steps_taken][action] = 1
         self._steps_taken += 1
         observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
-
-        heterog_obs, b, c, d = self.env.step(action, observation_spaces=[
-                                                  self.env.observation.spaces["TextSizeBytes"],
-                                                  self.env.observation.spaces["Runtime"]])
+        observation_spaces_list = [self.env.observation.spaces[k] for (k,_) in self.hetero_os.items()]
+        heterog_obs, b, c, d = self.env.step(action, observation_spaces=observation_spaces_list)
         observation = [observable_a, heterog_obs[0], heterog_obs[1]]
 
         return observation, b, c, d
@@ -318,7 +316,7 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=lambda a: math.sqrt(sum
     return avg_reward.value
 
 
-def make_env(PARAMS=FLAGS):
+def make_env(extra_observation_spaces=None):
     env  = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark="cbench-v1/qsort",  # selects the program to compile
@@ -327,9 +325,12 @@ def make_env(PARAMS=FLAGS):
             )
 
     env = TimeLimit(env, max_episode_steps=5)
-    o = OrderedDict()
-    o["TextSizeBytes"] = 0
-    o["Runtime"]= np.zeros(1)
+    if not isinstance(extra_observation_spaces, OrderedDict):
+        o = OrderedDict()
+        o["TextSizeBytes"] = 0
+        o["Runtime"]= np.zeros(1)
+    else:
+        o = extra_observation_spaces
     env = HistoryObservation(env, o)
     return env
 
