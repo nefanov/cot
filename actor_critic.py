@@ -27,6 +27,7 @@ flags.update({"std_smoothing": 0.4})  #"Smoothing factor for std dev normalizati
 flags.update({"learning_rate": 0.008})
 flags.update({"episodes": 2000})
 flags.update({"seed": 0})
+flags.update({"is_debug": True})
 FLAGS = flags
 
 
@@ -80,29 +81,18 @@ class HistoryObservation(gym.ObservationWrapper):
         self.hetero_os = hetero_observations_names
 
     def reset(self, *args, **kwargs):
-        def reset_by_type(stmt):
-            if isinstance(stmt, int):
-                return 0
-            elif isinstance(stmt,(float)):
-                return 0.0
-            else:
-                try:
-                    return np.zeros(stmt.size)
-                except Exception as e:
-                    print("Exception is happened during the observation space", stmt, "reset:", e)
-                    return None
-            return
-
         self._steps_taken = 0
         self._state = np.zeros(
             (FLAGS['episode_len'] - 1, self.action_space.n), dtype=np.int32
-        )
-        super().reset(*args, **kwargs)
-        reset_state = [self._state]
-        for k,v in self.hetero_os.items():
-            reset_state.append(reset_by_type(v))
+        ) # drop history diagram
+        super().reset(*args, **kwargs) # drop the environment state
+        reset_state = [self._state] # add dropped history diagram as state_{0}
+        for k,_ in self.hetero_os.items():
+            reset_state.append(self.env.observation[k]) # append dropped {observation space}_i as state_{i},i \in 1..len
+            if FLAGS['is_debug']:
+                print("Reset: add baseline observation for", k , ":", self.env.observation[k])
 
-        return [self._state, 0, np.zeros(1)] # should be specified by certain ObservationSpaces
+        return reset_state # should be specified by certain ObservationSpaces
 
     def step(self, action: int):
         assert self._steps_taken < FLAGS['episode_len']
@@ -381,6 +371,3 @@ def test_run_actor_critic_smoke_test():
 
 if __name__ == "__main__":
     test_run_actor_critic_smoke_test()
-
-
-
