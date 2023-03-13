@@ -1,0 +1,1 @@
+1) Benchmark can be set as a file:benchmark="file:///home/nefanov/compiler_experiments/cgym/cot/myapp.bc" . Generalize it for a list of files + options
