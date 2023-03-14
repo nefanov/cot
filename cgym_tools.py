@@ -103,7 +103,7 @@ def test_cycle():
 def test_experiment():
     ex = Experiment(
         "llvm-v0",  # selects the compiler to use
-        bench="cbench-v1/crc32",  # selects the program to compile
+        bench="file:///home/nefanov/compiler_experiments/cot_contrib/myapp.bc",  # selects the program to compile
         observation_space="ObjectTextSizeBytes",  # selects the observation space
         reward_space="External" #RewardMode.RUNTIMEPOINTESTIMATE,
     )
