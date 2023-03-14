@@ -2,6 +2,7 @@ import sys, os
 import compiler_gym                      # imports the CompilerGym environments
 from enum import Enum
 from rewards_env_wrappers import RuntimePointEstimateReward
+import bench_util
 
 
 class CharacterMode(Enum):
@@ -103,7 +104,7 @@ def test_cycle():
 def test_experiment():
     ex = Experiment(
         "llvm-v0",  # selects the compiler to use
-        bench="file:///home/nefanov/compiler_experiments/cot_contrib/myapp.bc",  # selects the program to compile
+        bench=bench_util.bench_uri_from_c_src("/home/nefanov/compiler_experiments/cot_contrib/myapp.bc"),  # selects the program to compile
         observation_space="ObjectTextSizeBytes",  # selects the observation space
         reward_space="External" #RewardMode.RUNTIMEPOINTESTIMATE,
     )
