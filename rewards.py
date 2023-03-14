@@ -28,9 +28,13 @@ if threshold is set and upward deviation is bigger than threshold, and m is wors
 """
 
 
-def const_factor_threshold(baseline_m, measured_m, baseline_n, measured_n, threshold=0.01):
+def const_factor_threshold(baseline_m, measured_m, baseline_n, measured_n, threshold=0.01, m_norm = None):
     f_n = (baseline_n - measured_n) / baseline_n
     d = (baseline_m - measured_m)
+    if not m_norm:
+        d=d/baseline_m
+    else:
+        d=d/m_norm
     if d > 0:
         if (f_n > 0) or (f_n <= 0 and math.fabs(f_n) < threshold):
             return (1.+f_n) * d
