@@ -3,6 +3,7 @@ import compiler_gym                      # imports the CompilerGym environments
 from enum import Enum
 from rewards_env_wrappers import RuntimePointEstimateReward
 import bench_util
+from benchmarks import runnable_bench_onefile
 
 
 class CharacterMode(Enum):
@@ -57,7 +58,6 @@ class Experiment:
         return self.env.action_spaces[0].names
 
 
-
 def test_packages_integrity():
     env = compiler_gym.make(  # creates a new environment (same as gym.make)
         "llvm-v0",  # selects the compiler to use
@@ -101,13 +101,15 @@ def test_cycle():
         print(f"Step {i}, quality={episode_reward:.3%}")
 
 
-def test_experiment():
+def test_experiment(tmpdir="/home/nefanov/compiler_experiments/cot_contrib", fname = "myapp"):
     ex = Experiment(
         "llvm-v0",  # selects the compiler to use
-        bench=bench_util.bench_uri_from_c_src("/home/nefanov/compiler_experiments/cot_contrib/myapp.bc"),  # selects the program to compile
+        bench=bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),  # selects the program to compile
         observation_space="ObjectTextSizeBytes",  # selects the observation space
         reward_space="External" #RewardMode.RUNTIMEPOINTESTIMATE,
     )
+    b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
+    ex.env.reset(benchmark=b)
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
