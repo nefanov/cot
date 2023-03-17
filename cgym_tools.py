@@ -15,13 +15,22 @@ class RewardMode(Enum):
     ObjectTextSizeB = "ObjectTextSizeBytes"
     RUNTIMEPOINTESTIMATE = "rper"
 
+RUNCONFIG = dict()
+RUNCONFIG['tmpdir'] = "/home/nefanov/compiler_experiments/cgym/cot"
+RUNCONFIG['dfl_prog_name'] = "myapp"
+RUNCONFIG['compiler_env'] = "llvm-v0"
+RUNCONFIG['inital_reward_space'] = "External"
+RUNCONFIG['runtime_observation_count'] = 10
 
+'''
+Experiment on clang/llvm environment class
+'''
 class Experiment:
-    def __init__(self, compiler, bench, observation_space, reward_space, name="exp1"):
+    def __init__(self, bench, observation_space, reward_space, name="exp1"):
         if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
             # RS wrapped around CompilerGym RS
             self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-                "llvm-v0",  # selects the compiler to use
+                RUNCONFIG['compiler_env'],  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
                 reward_space="ObjectTextSizeBytes",  # selects the optimization target
@@ -33,7 +42,7 @@ class Experiment:
         elif reward_space == "External":
             # external RS
             self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-                "llvm-v0",  # selects the compiler to use
+                RUNCONFIG['compiler_env'],  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
                 #reward_space=reward_space,  # selects the optimization target
@@ -41,7 +50,7 @@ class Experiment:
         else:
             # CompilerGym RS
             self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-                "llvm-v0",  # selects the compiler to use
+                RUNCONFIG['compiler_env'],  # selects the compiler to use
                 benchmark=bench,  # selects the program to compile
                 observation_space=observation_space,  # selects the observation space
                 reward_space=reward_space,  # selects the optimization target
@@ -49,6 +58,16 @@ class Experiment:
 
         self.name = name
         self.env.reset()  # starts a new compilation session
+
+    def resetBenchmark(self, benchmark,
+                       tmpdir=RUNCONFIG['tmpdir'],
+                       fname=RUNCONFIG['dfl_prog_name'],
+                       runtime_observation_count=RUNCONFIG['runtime_observation_count']):
+        b = runnable_bench_onefile(self.env, runtime_observation_count=10,
+                                   tmpdir=tmpdir, name=fname + ".c")
+        self.env.reset(benchmark=b)
+        return self.env
+
 
     def experimentReset(self):
         self.env.reset()
@@ -101,15 +120,15 @@ def test_cycle():
         print(f"Step {i}, quality={episode_reward:.3%}")
 
 
-def test_experiment(tmpdir="/home/nefanov/compiler_experiments/cot_contrib", fname = "myapp"):
+def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]):
     ex = Experiment(
-        "llvm-v0",  # selects the compiler to use
         bench=bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),  # selects the program to compile
         observation_space="ObjectTextSizeBytes",  # selects the observation space
-        reward_space="External" #RewardMode.RUNTIMEPOINTESTIMATE,
+        reward_space=RUNCONFIG['inital_reward_space'] #RewardMode.RUNTIMEPOINTESTIMATE,
     )
-    b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
-    ex.env.reset(benchmark=b)
+    #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
+    #ex.env.reset(benchmark=b)
+    ex.resetBenchmark(ex.env, runtime_observation_count=10)
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
