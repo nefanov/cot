@@ -265,7 +265,9 @@ def finish_episode(model, optimizer) -> float:
     return loss_value
 
 
-def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold):
+def TrainActorCritic(env, PARAMS=FLAGS,
+                     reward_estimator=const_factor_threshold,
+                     reward_if_list_func=lambda a: np.mean(a)):
     model = BasicPolicy(len(env.action_spaces[0].names), PARAMS=PARAMS)
     optimizer = optim.Adam(model.parameters(), lr=PARAMS['learning_rate']) # modify it
     # only for debug statistics
@@ -276,7 +278,7 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold)
         # Reset environment and episode reward.
         state = env.reset()
         ep_reward = 0
-        action_log=list()
+        action_log = list()
         while True:
             # Select action from policy.
             action = select_action(model, state[0], PARAMS['exploration'])
@@ -284,7 +286,8 @@ def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold)
             action_log.append(env.action_spaces[0].names[action])
             state, reward, done, _ = env.step(action)
             # reward calculation
-            reward = reward_estimator(env.hetero_os_baselines[0], state[1], env.hetero_os_baselines[0], state[2][0])
+            reward = reward_estimator(env.hetero_os_baselines[0], state[1],
+                                      env.hetero_os_baselines[0], reward_if_list_func(state[2]))
             if FLAGS['is_debug']:
                 print("OBS-RW:", state[1:], "; Reward =", reward)
             # append reward to the model
