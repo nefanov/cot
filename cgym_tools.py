@@ -125,13 +125,13 @@ def test_cycle():
 
 def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]):
     ex = Experiment(
-        bench=bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),  # selects the program to compile
+        bench=None,#bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),
         observation_space="ObjectTextSizeBytes",  # selects the observation space
         reward_space=RUNCONFIG['inital_reward_space'] #RewardMode.RUNTIMEPOINTESTIMATE,
     )
     #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
     #ex.env.reset(benchmark=b)
-    ex.resetBenchmark(ex.env, runtime_observation_count=10, run_args=["50000","10000"], rts=10)
+    ex.resetBenchmark(ex.env, runtime_observation_count=10, run_args=["10000","10000"], rts=10)
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
