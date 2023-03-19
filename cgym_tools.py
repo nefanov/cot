@@ -5,6 +5,7 @@ from rewards_env_wrappers import RuntimePointEstimateReward
 import bench_util
 from benchmarks import runnable_bench_onefile
 
+import numpy as np
 
 class CharacterMode(Enum):
     PROGRAML = 0
@@ -63,9 +64,10 @@ class Experiment:
                        tmpdir=RUNCONFIG['tmpdir'],
                        fname=RUNCONFIG['dfl_prog_name'],
                        runtime_observation_count=RUNCONFIG['runtime_observation_count'],
-                       run_args=list()):
+                       run_args=list(),
+                       rts=10):
         b = runnable_bench_onefile(self.env, runtime_observation_count=10,
-                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args)
+                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args, run_timeout_seconds=rts)
         self.env.reset(benchmark=b)
         return self.env
 
@@ -129,27 +131,31 @@ def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]
     )
     #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
     #ex.env.reset(benchmark=b)
-    ex.resetBenchmark(ex.env, runtime_observation_count=10, run_args=["1000","10000"] )
+    ex.resetBenchmark(ex.env, runtime_observation_count=10, run_args=["50000","10000"], rts=10)
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
 
     episode_reward = 0.0
     print(ex.env.observation.spaces)
+    prev_obs = None
     for i in range(1000):
         action = ex.env.action_space.sample()
         # print("A", action)
-        print("Action  #", action, ":", ex.env.action_spaces[0].names[int(action.__repr__())])
+        print("Step", i, ", Action ", action, ":", ex.env.action_spaces[0].names[int(action.__repr__())])
         observation, reward, done, info = ex.env.step(action,
                  observation_spaces = [ ex.env.observation.spaces["Ir2vecFlowAware"],
                                         ex.env.observation.spaces["TextSizeBytes"],
                                         ex.env.observation.spaces["Runtime"]])
-        print("OBS-RW:", observation[1:], reward)
+
+        rwd = None if prev_obs == None else (prev_obs  - np.mean(observation[2]))
+        prev_obs = np.mean(observation[2])
+        print("bytes:", observation[1], "rt:", np.mean(observation[2]), "rt gain:", rwd)
         if done:
             print("DONE!!!")
             break
 
-        print(f"Step {i}, quality={episode_reward:.3%}")
+        #print(f"Step {i}, quality={episode_reward:.3%}")
     return
 
 if __name__ == '__main__':

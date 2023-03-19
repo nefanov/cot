@@ -26,7 +26,8 @@ from compiler_gym.util.gym_type_hints import ActionType, ObservationType
 def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
                            name="program.c",
                            run_args=list(),
-                           warmup_count=10):
+                           warmup_count=10,
+                           run_timeout_seconds=10):
     env.reset()
     env.runtime_observation_count = runtime_observation_count
     env.runtime_warmup_runs_count = warmup_count
@@ -38,5 +39,5 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
     benchmark.proto.dynamic_config.build_cmd.outfile.extend(["a.out"])
     benchmark.proto.dynamic_config.build_cmd.timeout_seconds = 10
     benchmark.proto.dynamic_config.run_cmd.argument.extend(["./a.out"] + run_args)
-    benchmark.proto.dynamic_config.run_cmd.timeout_seconds = 10
+    benchmark.proto.dynamic_config.run_cmd.timeout_seconds = run_timeout_seconds
     return benchmark
