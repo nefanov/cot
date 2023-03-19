@@ -62,9 +62,10 @@ class Experiment:
     def resetBenchmark(self, benchmark,
                        tmpdir=RUNCONFIG['tmpdir'],
                        fname=RUNCONFIG['dfl_prog_name'],
-                       runtime_observation_count=RUNCONFIG['runtime_observation_count']):
+                       runtime_observation_count=RUNCONFIG['runtime_observation_count'],
+                       run_args=list()):
         b = runnable_bench_onefile(self.env, runtime_observation_count=10,
-                                   tmpdir=tmpdir, name=fname + ".c")
+                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args)
         self.env.reset(benchmark=b)
         return self.env
 
@@ -128,7 +129,7 @@ def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]
     )
     #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
     #ex.env.reset(benchmark=b)
-    ex.resetBenchmark(ex.env, runtime_observation_count=10)
+    ex.resetBenchmark(ex.env, runtime_observation_count=10, run_args=["1000","10000"] )
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")

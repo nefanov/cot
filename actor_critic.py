@@ -33,12 +33,9 @@ flags.update({"seed": 0})
 flags.update({"is_debug": False})
 FLAGS = flags
 
-
 eps = np.finfo(np.float32).eps.item()
 
 SavedAction = namedtuple("SavedAction", ["log_prob", "value"])
-
-
 
 # === statistical values -- move to algorithms.statistical
 class MovingExponentialAverage:
