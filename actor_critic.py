@@ -106,7 +106,7 @@ class HistoryObservation(gym.ObservationWrapper):
             self._state[self._steps_taken][action] = 1
         self._steps_taken += 1
         observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
-        observation_spaces_list = [self.env.observation.spaces[k] for (k,_) in self.hetero_os.items()]
+        observation_spaces_list = [self.env.observation.spaces[k] for (k, _) in self.hetero_os.items()]
         heterog_obs, b, c, d = self.env.step(action, observation_spaces=observation_spaces_list)
         observation = [observable_a, heterog_obs[0], heterog_obs[1]]
 
@@ -325,21 +325,21 @@ def TrainActorCritic(env, PARAMS=FLAGS,
     return avg_reward.value
 
 
-def make_env(extra_observation_spaces=None, benchmark=None):
+def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz"):
     if benchmark is None:
         benchmark = "cbench-v1/dijkstra"
-    env  = compiler_gym.make(  # creates a partially-empty env
+    env = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark=benchmark,  # selects the program to compile
-                observation_space=None,  # default observation space
+                observation_space=sz_baseline,  # initial observation
                 reward_space=None,  # in future selects the optimization target
             )
 
     env = TimeLimit(env, max_episode_steps=5)
     if not isinstance(extra_observation_spaces, OrderedDict):
         o = OrderedDict()
-        o["TextSizeBytes"] = 0
-        o["Runtime"]= np.zeros(1)
+        o["TextSizeBytes"] = env.observation_space # this is only a baseline, and value is defaultly scalar -- chk type
+        o["Runtime"] = np.zeros(1)
     else:
         o = extra_observation_spaces
     env = HistoryObservation(env, o)
