@@ -295,7 +295,8 @@ def TrainActorCritic(env, PARAMS=FLAGS,
 
             # Perform back propagation.
         loss = finish_episode(model, optimizer)
-        print("Action log", action_log)
+        if FLAGS['is_debug']:
+            print("Action log", action_log)
         # Update statistics.
         max_ep_reward = max(max_ep_reward, ep_reward)
         avg_reward.next(ep_reward)
@@ -325,9 +326,9 @@ def TrainActorCritic(env, PARAMS=FLAGS,
     return avg_reward.value
 
 
-def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz"):
+def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="ObjectTextSizeOz"):
     if benchmark is None:
-        benchmark = "cbench-v1/dijkstra"
+        benchmark = "cbench-v1/crc32"
     env = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark=benchmark,  # selects the program to compile
@@ -336,9 +337,10 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
             )
 
     env = TimeLimit(env, max_episode_steps=5)
+    baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
         o = OrderedDict()
-        o["TextSizeBytes"] = env.observation_space # this is only a baseline, and value is defaultly scalar -- chk type
+        o["TextSizeBytes"] = baseline_obs_init_val # this is only a baseline, and value is defaultly scalar -- chk type
         o["Runtime"] = np.zeros(1)
     else:
         o = extra_observation_spaces
