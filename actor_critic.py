@@ -326,7 +326,7 @@ def TrainActorCritic(env, PARAMS=FLAGS,
     return avg_reward.value
 
 
-def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="ObjectTextSizeOz"):
+def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz"):
     if benchmark is None:
         benchmark = "cbench-v1/crc32"
     env = compiler_gym.make(  # creates a partially-empty env

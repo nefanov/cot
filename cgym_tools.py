@@ -17,7 +17,7 @@ class RewardMode(Enum):
     RUNTIMEPOINTESTIMATE = "rper"
 
 RUNCONFIG = dict()
-RUNCONFIG['tmpdir'] = "/home/nefanov/compiler_experiments/cot_contrib"
+RUNCONFIG['tmpdir'] = "/home/nefanov/compiler_experiments/cgym/cot"
 RUNCONFIG['dfl_prog_name'] = "myapp"
 RUNCONFIG['compiler_env'] = "llvm-v0"
 RUNCONFIG['inital_reward_space'] = "External"
