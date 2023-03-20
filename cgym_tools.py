@@ -17,7 +17,7 @@ class RewardMode(Enum):
     RUNTIMEPOINTESTIMATE = "rper"
 
 RUNCONFIG = dict()
-RUNCONFIG['tmpdir'] = "/home/nefanov/compiler_experiments/cgym/cot"
+RUNCONFIG['tmpdir'] = "/home/nefanov/compiler_experiments/cot_contrib"
 RUNCONFIG['dfl_prog_name'] = "myapp"
 RUNCONFIG['compiler_env'] = "llvm-v0"
 RUNCONFIG['inital_reward_space'] = "External"
@@ -114,7 +114,6 @@ def test_cycle():
 
     for i in range(1, 201):
         action = env.action_space.sample()
-        #print("A", action)
         print("Action  #", action, ":", env.action_spaces[0].names[int(action.__repr__())])
         observation, reward, done, info = env.step(action)
         if done:
@@ -146,17 +145,20 @@ def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]
         observation, reward, done, info = ex.env.step(action,
                  observation_spaces = [ ex.env.observation.spaces["Ir2vecFlowAware"],
                                         ex.env.observation.spaces["TextSizeBytes"],
-                                        ex.env.observation.spaces["Runtime"]])
+                                        ex.env.observation.spaces["Runtime"],
+                                        ex.env.observation.spaces["TextSizeOz"]])
 
-        rwd = None if prev_obs == None else (prev_obs  - np.mean(observation[2]))
+        rwd = None if prev_obs == None else (prev_obs - np.mean(observation[2]))
         prev_obs = np.mean(observation[2])
-        print("bytes:", observation[1], "rt:", np.mean(observation[2]), "rt gain:", rwd)
+        print("bytes:", observation[1], "Oz:", observation[3], "rt:", np.mean(observation[2]),
+              "rt gain:", rwd)
         if done:
             print("DONE!!!")
             break
 
         #print(f"Step {i}, quality={episode_reward:.3%}")
     return
+
 
 if __name__ == '__main__':
     test_packages_integrity()
