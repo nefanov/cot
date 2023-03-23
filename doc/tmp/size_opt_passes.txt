@@ -1,0 +1,63 @@
++*** IR Dump Before Canonicalize natural loops ***
+"-loop-simplify"
+*** IR Dump Before LCSSA Verifier ***
++ *** IR Dump Before Loop-Closed SSA Form Pass *** "-lcssa"
++ *** IR Dump Before Remove redundant instructions ***
+"-instcombine" , "-gvn"? , "-aggressive-instcombine"?
+"-deadargelim"
+	
+
+Dead Argument Elimination
+
+"-dce"
+"-adce"	
+
+Dead Code Elimination
+
+"-die"
+	
+
+Dead Instruction Elimination
+
+"-dse"
+
+
+"-loop-deletion" ?
+
+"-licm", "-mem2reg" ?
+"-memcpyopt"?,
+"-mergefunc" ?
+"-mergereturn" ?
+"-prune-eh" ?
+"-reassociate"?
+"-gcse" ?
+"-pre" ?
+
+"-sroa"!
+"-sccp"
+"-strip"??? -- agressive!
+
+"-strip-dead-prototypes"
+"-strip-debug-declare"?
+"-strip-nondebug"?
+ --------------
+|"-verify"???  |
+ --------------
++*** IR Dump Before Hoist/decompose integer division and remainder *** "-div-rem-pairs"
++*** IR Dump Before Simplify the CFG ***				"-simplifycfg", (extra: add "-instsimplify")
+*** IR Dump Before Module Verifier ***
++*** IR Dump Before Canonicalize natural loops ***			"-loop-simplify"
++*** IR Dump Before LCSSA Verifier ***				"-lcssa"
++*** IR Dump Before Loop-Closed SSA Form Pass ***			"-lcssa"
++*** IR Dump Before Loop Sink ***					"-sink" ? "-strip"? 
++*** IR Dump Before Loop Sink ***
+
++*** IR Dump Before Remove redundant instructions ***
++ *** IR Dump Before Hoist/decompose integer division and remainder ***
+*** IR Dump Before Simplify the CFG ***
+*** IR Dump Before Module Verifier ***
+
+
+ --------------
+|"-verify"???  |
+ --------------
