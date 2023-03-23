@@ -30,7 +30,7 @@ flags.update({"std_smoothing": 0.4})  #"Smoothing factor for std dev normalizati
 flags.update({"learning_rate": 0.008})
 flags.update({"episodes": 1000})
 flags.update({"seed": 0})
-flags.update({"is_debug": False})
+flags.update({"is_debug": True})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
 FLAGS = flags
 
@@ -168,7 +168,7 @@ class BasicPolicy(nn.Module):
         return action_prob, state_values
 
 
-def select_action(model, state, exploration_rate=0.0, white_list=None):
+def select_action(model, state, exploration_rate=0.0, white_list=FLAGS["actions_white_list"]):
     """Selects an action and registers it with the action buffer."""
     state = torch.from_numpy(state.flatten()).float()
     probs, state_value = model(state)
@@ -283,15 +283,15 @@ def TrainActorCritic(env, PARAMS=FLAGS,
         action_log = list()
         while True:
             # Select action from policy.
-            action = select_action(model, state[0], PARAMS['exploration'])
+            action = select_action(model, state[0], PARAMS['exploration'], white_list=FLAGS["actions_white_list"])
             # Take the action
             action_log.append(env.action_spaces[0].names[action])
             state, reward, done, _ = env.step(action)
             # reward calculation
             reward = reward_estimator(env.hetero_os_baselines[0], state[1],
                                       env.hetero_os_baselines[0], reward_if_list_func(state[2]))
-            if FLAGS['is_debug']:
-                print("OBS-RW:", state[1:], "; Reward =", reward)
+            #if FLAGS['is_debug']:
+            #    print("OBS-RW:", state[1:], "; Reward =", reward)
             # append reward to the model
             model.rewards.append(reward)
             ep_reward += reward
@@ -378,7 +378,7 @@ def main():
     ]
 
     actions_2 = [
-        "-instcombine",
+
         "-sroa",
     ]
     with make_env(actions_whitelist_names=actions_2) as env:
