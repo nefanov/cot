@@ -20,7 +20,7 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 from rewards import const_factor_threshold
 
 flags = {}
-flags.update({"episode_len": 5})  #"Number of transitions per episode."
+flags.update({"episode_len": 15})  #"Number of transitions per episode."
 flags.update({"hidden_size": 64})  #"Latent vector size."
 flags.update({"log_interval": 100})  #"Episodes per log output."
 flags.update({"iterations": 1})  #"Times to redo entire training."
@@ -37,6 +37,7 @@ FLAGS = flags
 eps = np.finfo(np.float32).eps.item()
 
 SavedAction = namedtuple("SavedAction", ["log_prob", "value"])
+
 
 # === statistical values -- move to algorithms.statistical
 class MovingExponentialAverage:
@@ -343,7 +344,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
 
     if actions_whitelist_names:
         FLAGS["actions_white_list"] = [env.action_spaces[0].names.index(action) for action in actions_whitelist_names]
-    env = TimeLimit(env, max_episode_steps=5)
+    env = TimeLimit(env, max_episode_steps=FLAGS["episode_len"])
     baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
         o = OrderedDict()
@@ -378,8 +379,11 @@ def main():
     ]
 
     actions_2 = [
-
+        "-break-crit-edges",
+        "-early-cse-memssa",
+        "-simplifycfg",
         "-sroa",
+        "-mem2reg",
     ]
     with make_env(actions_whitelist_names=actions_2) as env:
         print(f"Seed: {0}")
