@@ -14,7 +14,7 @@ from torch.distributions import Categorical
 
 #compiler_gym dependency:
 import compiler_gym
-from compiler_gym.wrappers import TimeLimit
+from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 
 #cross-cot deps
 from rewards import const_factor_threshold
@@ -31,6 +31,7 @@ flags.update({"learning_rate": 0.008})
 flags.update({"episodes": 1000})
 flags.update({"seed": 0})
 flags.update({"is_debug": False})
+flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
 FLAGS = flags
 
 eps = np.finfo(np.float32).eps.item()
@@ -167,7 +168,7 @@ class BasicPolicy(nn.Module):
         return action_prob, state_values
 
 
-def select_action(model, state, exploration_rate=0.0):
+def select_action(model, state, exploration_rate=0.0, white_list=None):
     """Selects an action and registers it with the action buffer."""
     state = torch.from_numpy(state.flatten()).float()
     probs, state_value = model(state)
@@ -178,10 +179,14 @@ def select_action(model, state, exploration_rate=0.0):
 
     # Sample an action using the distribution, or pick an action
     # uniformly at random if in an exploration mode.
-    if random.random() < exploration_rate:
-        action = torch.tensor(random.randrange(0, len(probs)))
-    else:
-        action = m.sample()
+    while True: # do-while loop emulation
+        if random.random() < exploration_rate:
+            action = torch.tensor(random.randrange(0, len(probs)))
+        else:
+            action = m.sample()
+        if white_list and action not in white_list:
+            continue
+        break
 
     # Save to action buffer. The drawing of a sample above simply
     # returns a constant integer that we cannot back-propagate
@@ -326,7 +331,7 @@ def TrainActorCritic(env, PARAMS=FLAGS,
     return avg_reward.value
 
 
-def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz"):
+def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz", actions_whitelist_names=None):
     if benchmark is None:
         benchmark = "cbench-v1/crc32"
     env = compiler_gym.make(  # creates a partially-empty env
@@ -336,6 +341,8 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
                 reward_space=None,  # in future selects the optimization target
             )
 
+    if actions_whitelist_names:
+        FLAGS["actions_white_list"] = [env.action_spaces[0].names.index(action) for action in actions_whitelist_names]
     env = TimeLimit(env, max_episode_steps=5)
     baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
@@ -352,8 +359,29 @@ def main():
     """Main entry point."""
     torch.manual_seed(FLAGS['seed'])
     random.seed(FLAGS['seed'])
+    actions = [
+        "-break-crit-edges",
+        "-early-cse-memssa",
+        "-gvn-hoist",
+        "-gvn",
+        "-instcombine",
+        "-instsimplify",
+        "-jump-threading",
+        "-loop-reduce",
+        "-loop-rotate",
+        "-loop-versioning",
+        "-mem2reg",
+        "-newgvn",
+        "-reg2mem",
+        "-simplifycfg",
+        "-sroa",
+    ]
 
-    with make_env() as env:
+    actions_2 = [
+        "-instcombine",
+        "-sroa",
+    ]
+    with make_env(actions_whitelist_names=actions_2) as env:
         print(f"Seed: {0}")
         print(f"Episode length: {5}")
         if FLAGS['iterations'] == 1:
