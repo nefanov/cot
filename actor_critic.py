@@ -294,8 +294,14 @@ def TrainActorCritic(env, PARAMS=FLAGS,
             action_log.append(env.action_spaces[0].names[action])
             state, reward, done, _ = env.step(action)
             # reward calculation
+
             reward = reward_estimator(env.hetero_os_baselines[0], state[1],
-                                      env.hetero_os_baselines[0], reward_if_list_func(state[2]))
+                                      reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2]))
+
+            size_rewards = [env.hetero_os_baselines[0], state[1]]
+            runtime_rewards = [reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2])]
+            if (size_rewards[1] < size_rewards[0]):
+                print("Gained:", size_rewards, runtime_rewards, "size gain:", math.fabs(size_rewards[1] - size_rewards[0]) * 100/size_rewards[0], "%")
             #if FLAGS['is_debug']:
             #    print("OBS-RW:", state[1:], "; Reward =", reward)
             # append reward to the model
