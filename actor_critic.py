@@ -18,6 +18,7 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 
 #cross-cot deps
 from rewards import const_factor_threshold
+from action_spaces_presets import *
 
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
@@ -360,61 +361,7 @@ def main():
     """Main entry point."""
     torch.manual_seed(FLAGS['seed'])
     random.seed(FLAGS['seed'])
-    actions = [
-        "-break-crit-edges",
-        "-early-cse-memssa",
-        "-gvn-hoist",
-        "-gvn",
-        "-instcombine",
-        "-instsimplify",
-        "-jump-threading",
-        "-loop-reduce",
-        "-loop-rotate",
-        "-loop-versioning",
-        "-mem2reg",
-        "-newgvn",
-        "-reg2mem",
-        "-simplifycfg",
-        "-sroa",
-    ]
 
-    actions_2 = [
-
-        "-simplifycfg",
-
-    ]
-
-    actions_oz_extra = [
-        "-loop-simplify",
-        "-lcssa",
-        "-instcombine",
-        "-break-crit-edges",
-        "-early-cse-memssa",
-        "-gvn-hoist",
-        "-gvn",
-        "-newgvn",
-        "-loop-reduce",
-        "-loop-rotate",
-        "-loop-versioning",
-        "-aggressive-instcombine",
-        "-deadargelim",
-        "-dce",
-        "-adce",
-        "-die",
-        "-dse",
-        "-loop-deletion",
-        "-licm",
-        "-mem2reg",
-        "-memcpyopt",
-        "-mergefunc",
-        "-mergereturn",
-        "-prune-eh",
-        "-reassociate",
-        "-early-cse-memssa",
-        #"-pre",
-        "-sroa",
-        "-sccp",
-    ]
     with make_env(actions_whitelist_names=actions_oz_extra) as env:
         print(f"Seed: {0}")
         print(f"Episode length: {5}")
