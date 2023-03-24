@@ -19,19 +19,21 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 #cross-cot deps
 from rewards import const_factor_threshold
 from action_spaces_presets import *
+from logger import LogMode, Logger
 
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
 flags.update({"hidden_size": 64})  #"Latent vector size."
 flags.update({"log_interval": 100})  #"Episodes per log output."
-flags.update({"iterations": 1})  #"Times to redo entire training."
+flags.update({"iterations": 5})  #"Times to redo entire training."
 flags.update({"exploration": 0.0})  #"Rate to explore random transitions."
 flags.update({"mean_smoothing": 0.95})  #"Smoothing factor for mean normalization."
 flags.update({"std_smoothing": 0.4})  #"Smoothing factor for std dev normalization."
 flags.update({"learning_rate": 0.008})
 flags.update({"episodes": 1000})
 flags.update({"seed": 0})
-flags.update({"is_debug": False})
+flags.update({"log_mode": LogMode.SHORT})
+flags.update({"logger": Logger(flags["log_mode"])})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
 FLAGS = flags
 
@@ -95,8 +97,10 @@ class HistoryObservation(gym.ObservationWrapper):
             obs = self.env.observation[k]
             self.hetero_os_baselines.append(obs)
             reset_state.append(obs) # append dropped {observation space}_i as state_{i},i \in 1..len
-            if FLAGS['is_debug']:
-                print("Reset: add baseline observation for", k , ":", obs)
+            FLAGS["logger"].log("Reset: add baseline observation for " + str(k) + " : " + str(obs),
+                                mode=LogMode.VERBOSE)
+
+
 
         return reset_state # should be specified by certain ObservationSpaces
 
@@ -302,30 +306,25 @@ def TrainActorCritic(env, PARAMS=FLAGS,
 
             # Perform back propagation.
         loss = finish_episode(model, optimizer)
-        if FLAGS['is_debug']:
-            print("Action log", action_log)
         # Update statistics.
         max_ep_reward = max(max_ep_reward, ep_reward)
         avg_reward.next(ep_reward)
         avg_loss.next(loss)
 
         # Log statistics.
-        if (
-                episode == 1
-                or episode % FLAGS['log_interval'] == 0
-                or episode == FLAGS['episodes']
-        ):
-            print(
-                f"Episode {episode}\t"
-                f"Last reward: {ep_reward:.2f}\t"
-                f"Avg reward: {avg_reward.value:.2f}\t"
-                f"Best reward: {max_ep_reward:.2f}\t"
-                f"Last loss: {loss:.6f}\t"
-                f"Avg loss: {avg_loss.value:.6f}\t",
-                flush=True,
-            )
-    print(f"\nFinal performance (avg reward): {avg_reward.value:.2f}")
-    print(f"Final avg reward versus own best: {avg_reward.value - max_ep_reward:.2f}")
+        if (episode == 1 or episode % FLAGS['log_interval'] == 0 or episode == FLAGS['episodes']):
+            FLAGS["logger"].save_and_print(f"Episode {episode}\t"
+                                f"Last reward: {ep_reward:.2f}\t"
+                                f"Avg reward: {avg_reward.value:.2f}\t"
+                                f"Best reward: {max_ep_reward:.2f}\t"
+                                f"Last loss: {loss:.6f}\t"
+                                f"Avg loss: {avg_loss.value:.6f}\t",
+                                mode=LogMode.SHORT)
+            FLAGS["logger"].save_and_print("Action Log: " + str(action_log), mode=LogMode.SHORT)
+    final_perf_str = f"\nFinal performance (avg reward): {avg_reward.value:.2f}"
+    final_avg_reward_str = f"Final avg reward versus own best: {avg_reward.value - max_ep_reward:.2f}"
+    FLAGS["logger"].save_and_print(final_perf_str)
+    FLAGS["logger"].save_and_print(final_avg_reward_str)
 
     # One could also return the best found solution here, though that
     # is more random and noisy, while the average reward indicates how
@@ -363,8 +362,6 @@ def main():
     random.seed(FLAGS['seed'])
 
     with make_env(actions_whitelist_names=actions_oz_extra) as env:
-        print(f"Seed: {0}")
-        print(f"Episode length: {5}")
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
@@ -374,15 +371,15 @@ def main():
         # determine the distribution of outcomes.
         performances = []
         for i in range(1, FLAGS['iterations'] + 1):
-            print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
+            FLAGS["logger"].save_and_print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
             performances.append(TrainActorCritic(env, reward_estimator=const_factor_threshold))
 
-        print("\n*** Summary")
-        print(f"Final performances: {performances}\n")
-        print(f"  Best performance: {max(performances):.2f}")
-        print(f"Median performance: {statistics.median(performances):.2f}")
-        print(f"   Avg performance: {statistics.mean(performances):.2f}")
-        print(f" Worst performance: {min(performances):.2f}")
+        FLAGS["logger"].save_and_print("\n*** Summary")
+        FLAGS["logger"].save_and_print(f"Final performances: {performances}\n")
+        FLAGS["logger"].save_and_print(f"  Best performance: {max(performances):.2f}")
+        FLAGS["logger"].save_and_print(f"Median performance: {statistics.median(performances):.2f}")
+        FLAGS["logger"].save_and_print(f"   Avg performance: {statistics.mean(performances):.2f}")
+        FLAGS["logger"].save_and_print(f" Worst performance: {min(performances):.2f}")
 
 
 if __name__ == "__main__":
