@@ -30,7 +30,7 @@ flags.update({"std_smoothing": 0.4})  #"Smoothing factor for std dev normalizati
 flags.update({"learning_rate": 0.008})
 flags.update({"episodes": 1000})
 flags.update({"seed": 0})
-flags.update({"is_debug": True})
+flags.update({"is_debug": False})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
 FLAGS = flags
 
@@ -379,13 +379,43 @@ def main():
     ]
 
     actions_2 = [
+
+        "-simplifycfg",
+
+    ]
+
+    actions_oz_extra = [
+        "-loop-simplify",
+        "-lcssa",
+        "-instcombine",
         "-break-crit-edges",
         "-early-cse-memssa",
-        "-simplifycfg",
-        "-sroa",
+        "-gvn-hoist",
+        "-gvn",
+        "-newgvn",
+        "-loop-reduce",
+        "-loop-rotate",
+        "-loop-versioning",
+        "-aggressive-instcombine",
+        "-deadargelim",
+        "-dce",
+        "-adce",
+        "-die",
+        "-dse",
+        "-loop-deletion",
+        "-licm",
         "-mem2reg",
+        "-memcpyopt",
+        "-mergefunc",
+        "-mergereturn",
+        "-prune-eh",
+        "-reassociate",
+        "-early-cse-memssa",
+        #"-pre",
+        "-sroa",
+        "-sccp",
     ]
-    with make_env(actions_whitelist_names=actions_2) as env:
+    with make_env(actions_whitelist_names=actions_oz_extra) as env:
         print(f"Seed: {0}")
         print(f"Episode length: {5}")
         if FLAGS['iterations'] == 1:
