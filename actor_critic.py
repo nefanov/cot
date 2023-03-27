@@ -24,7 +24,7 @@ from logger import LogMode, Logger
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
 flags.update({"hidden_size": 64})  #"Latent vector size."
-flags.update({"log_interval": 100})  #"Episodes per log output."
+flags.update({"log_interval": 10})  #"Episodes per log output."
 flags.update({"iterations": 5})  #"Times to redo entire training."
 flags.update({"exploration": 0.0})  #"Rate to explore random transitions."
 flags.update({"mean_smoothing": 0.95})  #"Smoothing factor for mean normalization."
@@ -308,7 +308,10 @@ def TrainActorCritic(env, PARAMS=FLAGS,
         # Reset environment and episode reward.
         state = env.reset()
         ep_reward = 0
+        prev_size = state[1]
+        prev_runtime = reward_if_list_func(state[2])
         action_log = list()
+
         while True:
             # Select action from policy.
             action = select_action(model, state[0], PARAMS['exploration'], white_list=FLAGS["actions_white_list"])
@@ -317,8 +320,14 @@ def TrainActorCritic(env, PARAMS=FLAGS,
             state, reward, done, _ = env.step(action)
             # reward calculation
 
-            reward = reward_estimator(env.hetero_os_baselines[0], state[1],
-                                      reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2]))
+            reward = reward_estimator(env.hetero_os_baselines[0],
+                                      state[1],
+                                      reward_if_list_func(env.hetero_os_baselines[1]),
+                                      reward_if_list_func(state[2]),
+                                      prev_size,
+                                      prev_runtime)
+            prev_size = state[1]
+            prev_runtime = reward_if_list_func(state[2])
 
             size_rewards = [env.hetero_os_baselines[0], state[1]]
             runtime_rewards = [reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2])]
