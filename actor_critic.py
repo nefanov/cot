@@ -61,6 +61,13 @@ class MovingExponentialAverage:
         return self.value
 
 
+def remap_actions(awl):
+    d = OrderedDict()
+    for i, item in enumerate(awl):
+        d[item] = i
+    return d
+
+
 class HistoryObservation(gym.ObservationWrapper):
     """
     This wrapper implements very simple characterization space:
@@ -77,9 +84,15 @@ class HistoryObservation(gym.ObservationWrapper):
 
     def __init__(self, env, hetero_observations_names=OrderedDict()):
         super().__init__(env=env)
+        self.x = len(env.action_spaces[0].names)
+        self.y = len(env.action_spaces[0].names)
+        if len(FLAGS["actions_white_list"]) > 0:
+            self.x = len(FLAGS["actions_white_list"])
+            self.y = len(FLAGS["actions_white_list"])
+
         self.observation_space = gym.spaces.Box(
-            low=np.full(len(env.action_spaces[0].names), 0, dtype=np.float32),
-            high=np.full(len(env.action_spaces[0].names), float("inf"), dtype=np.float32),
+            low=np.full(self.x, 0, dtype=np.float32),
+            high=np.full(self.y, float("inf"), dtype=np.float32),
             dtype=np.float32,
         )
         self.env = env
@@ -89,18 +102,17 @@ class HistoryObservation(gym.ObservationWrapper):
     def reset(self, *args, **kwargs):
         self._steps_taken = 0
         self._state = np.zeros(
-            (FLAGS['episode_len'] - 1, self.action_space.n), dtype=np.int32
+            (FLAGS['episode_len'] - 1, self.x), dtype=np.int32
         ) # drop history diagram
         super().reset(*args, **kwargs) # drop the environment state
         reset_state = [self._state] # add dropped history diagram as state_{0}
-        for k,_ in self.hetero_os.items():
+        # add extra observation spaces
+        for k, _ in self.hetero_os.items():
             obs = self.env.observation[k]
             self.hetero_os_baselines.append(obs)
             reset_state.append(obs) # append dropped {observation space}_i as state_{i},i \in 1..len
             FLAGS["logger"].log("Reset: add baseline observation for " + str(k) + " : " + str(obs),
                                 mode=LogMode.VERBOSE)
-
-
 
         return reset_state # should be specified by certain ObservationSpaces
 
@@ -110,9 +122,14 @@ class HistoryObservation(gym.ObservationWrapper):
             # Don't need to record the last action since there are no
             # further decisions to be made at that point, so that
             # information need never be presented to the model.
-            self._state[self._steps_taken][action] = 1
+            try:
+                act = FLAGS["actions_filter_map"][action]
+            except:
+                act = action
+            self._state[self._steps_taken][act] = 1
         self._steps_taken += 1
         observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
+        # compose extra observations into the observation vector too
         observation_spaces_list = [self.env.observation.spaces[k] for (k, _) in self.hetero_os.items()]
         heterog_obs, b, c, d = self.env.step(action, observation_spaces=observation_spaces_list)
         observation = [observable_a, heterog_obs[0], heterog_obs[1]]
@@ -276,7 +293,12 @@ def finish_episode(model, optimizer) -> float:
 def TrainActorCritic(env, PARAMS=FLAGS,
                      reward_estimator=const_factor_threshold,
                      reward_if_list_func=lambda a: np.mean(a)):
-    model = BasicPolicy(len(env.action_spaces[0].names), PARAMS=PARAMS)
+    bplen = len(env.action_spaces[0].names)
+    try:
+        bplen = len(FLAGS["actions_white_list"])
+    except:
+        pass
+    model = BasicPolicy(bplen, PARAMS=PARAMS)
     optimizer = optim.Adam(model.parameters(), lr=PARAMS['learning_rate']) # modify it
     # only for debug statistics
     max_ep_reward = -float("inf")
@@ -300,17 +322,14 @@ def TrainActorCritic(env, PARAMS=FLAGS,
 
             size_rewards = [env.hetero_os_baselines[0], state[1]]
             runtime_rewards = [reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2])]
-            if (size_rewards[1] < size_rewards[0]):
+            if size_rewards[1] < size_rewards[0]:
                 print("Gained:", size_rewards, runtime_rewards, "size gain:", math.fabs(size_rewards[1] - size_rewards[0]) * 100/size_rewards[0], "%")
-            #if FLAGS['is_debug']:
-            #    print("OBS-RW:", state[1:], "; Reward =", reward)
-            # append reward to the model
             model.rewards.append(reward)
             ep_reward += reward
             if done:
                 break
 
-            # Perform back propagation.
+        # Perform back propagation.
         loss = finish_episode(model, optimizer)
         # Update statistics.
         max_ep_reward = max(max_ep_reward, ep_reward)
@@ -318,7 +337,7 @@ def TrainActorCritic(env, PARAMS=FLAGS,
         avg_loss.next(loss)
 
         # Log statistics.
-        if (episode == 1 or episode % FLAGS['log_interval'] == 0 or episode == FLAGS['episodes']):
+        if episode == 1 or episode % FLAGS['log_interval'] == 0 or episode == FLAGS['episodes']:
             FLAGS["logger"].save_and_print(f"Episode {episode}\t"
                                 f"Last reward: {ep_reward:.2f}\t"
                                 f"Avg reward: {avg_reward.value:.2f}\t"
@@ -350,6 +369,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
 
     if actions_whitelist_names:
         FLAGS["actions_white_list"] = [env.action_spaces[0].names.index(action) for action in actions_whitelist_names]
+        FLAGS["actions_filter_map"] = remap_actions(FLAGS["actions_white_list"])
     env = TimeLimit(env, max_episode_steps=FLAGS["episode_len"])
     baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
