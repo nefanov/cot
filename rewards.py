@@ -20,11 +20,18 @@ if threshold is set and upward deviation is bigger than threshold, and m is wors
 """
 
 
-def const_factor_threshold(baseline_m, measured_m, baseline_n, measured_n, threshold=0.01, m_norm=None):
+def const_factor_threshold(baseline_m,
+                           measured_m,
+                           baseline_n,
+                           measured_n,
+                           prev_m,
+                           prev_n,
+                           threshold=0.01,
+                           m_norm=None):
     # constrained parameter gain
-    f_n = (baseline_n - measured_n) / baseline_n
+    f_n = (prev_n - measured_n) / baseline_n
     # argmin parameter gain
-    d = (baseline_m - measured_m)
+    d = (prev_m - measured_m)
     if not m_norm:
         d = d / baseline_m
     else:
@@ -39,7 +46,7 @@ def const_factor_threshold(baseline_m, measured_m, baseline_n, measured_n, thres
 
 
 if __name__ == '__main__':
-    print(const_factor_threshold(100, 90, 10, 100)) # should return 0.0 -- ten times n degradation
-    print(const_factor_threshold(100, 102, 100, 100))  # should return -2
-    print(const_factor_threshold(100, 98, 100, 100))  # should return 2
-    print(const_factor_threshold(100, 110, 10, 100)) # should return very negative reward
+    print(const_factor_threshold(100, 90, 10, 100, 100, 10)) # should return 0.0 -- ten times n degradation
+    print(const_factor_threshold(100, 102, 100, 100, 100, 100))  # should return -2
+    print(const_factor_threshold(100, 98, 100, 100, 100, 100))  # should return 2
+    print(const_factor_threshold(100, 110, 10, 100, 100, 10)) # should return very negative reward
