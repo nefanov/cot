@@ -4,7 +4,9 @@ import statistics
 from collections import namedtuple, OrderedDict
 from typing import List
 import numpy as np
+import sys
 
+#ml dependencies
 import gym
 import torch
 import torch.nn as nn
@@ -24,7 +26,7 @@ from logger import LogMode, Logger
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
 flags.update({"hidden_size": 64})  #"Latent vector size."
-flags.update({"log_interval": 10})  #"Episodes per log output."
+flags.update({"log_interval": 100})  #"Episodes per log output."
 flags.update({"iterations": 5})  #"Times to redo entire training."
 flags.update({"exploration": 0.0})  #"Rate to explore random transitions."
 flags.update({"mean_smoothing": 0.95})  #"Smoothing factor for mean normalization."
@@ -35,6 +37,7 @@ flags.update({"seed": 0})
 flags.update({"log_mode": LogMode.SHORT})
 flags.update({"logger": Logger(flags["log_mode"])})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
+flags.update({"patience": 5}) # patience for steps with no positive reward
 FLAGS = flags
 
 eps = np.finfo(np.float32).eps.item()
@@ -126,7 +129,7 @@ class HistoryObservation(gym.ObservationWrapper):
                 act = FLAGS["actions_filter_map"][action]
             except:
                 act = action
-            self._state[self._steps_taken][act] = 1
+            self._state[self._steps_taken][act] = 1 # act is only for observation states update, real action is "action"
         self._steps_taken += 1
         observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
         # compose extra observations into the observation vector too
@@ -191,7 +194,7 @@ class BasicPolicy(nn.Module):
         return action_prob, state_values
 
 
-def select_action(model, state, exploration_rate=0.0, white_list=FLAGS["actions_white_list"]):
+def select_action(model, state, exploration_rate=0.0, white_list=None, rev_w_=None):
     """Selects an action and registers it with the action buffer."""
     state = torch.from_numpy(state.flatten()).float()
     probs, state_value = model(state)
@@ -217,7 +220,10 @@ def select_action(model, state, exploration_rate=0.0, white_list=FLAGS["actions_
     model.saved_actions.append(SavedAction(m.log_prob(action), state_value))
 
     # The action to take.
-    return action.item()
+    if not rev_w_:
+        return action.item()
+    else:
+        return rev_w_[action.item()]
 
 
 def finish_episode(model, optimizer) -> float:
@@ -290,6 +296,25 @@ def finish_episode(model, optimizer) -> float:
     return loss_value
 
 
+def single_pass_validate(env, reward_estimator=const_factor_threshold,
+                              reward_if_list_func=lambda a: np.mean(a)):
+    passes_list = FLAGS["reverse_actions_filter_map"]
+    for k,v in passes_list.items():
+        state = env.reset()
+        ep_reward = 0
+        prev_size = state[1]
+        prev_runtime = reward_if_list_func(state[2])
+        action = v
+        state, r, d, _ = env.step(v)
+        reward = reward_estimator(env.hetero_os_baselines[0],
+                                  state[1],
+                                  reward_if_list_func(env.hetero_os_baselines[1]),
+                                  reward_if_list_func(state[2]),
+                                  prev_size,
+                                  prev_runtime)
+        print("Action", env.action_spaces[0].names[action], "R", reward,
+              "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
+
 def TrainActorCritic(env, PARAMS=FLAGS,
                      reward_estimator=const_factor_threshold,
                      reward_if_list_func=lambda a: np.mean(a)):
@@ -311,11 +336,14 @@ def TrainActorCritic(env, PARAMS=FLAGS,
         prev_size = state[1]
         prev_runtime = reward_if_list_func(state[2])
         action_log = list()
-
+        pat = 0
         while True:
             # Select action from policy.
-            action = select_action(model, state[0], PARAMS['exploration'], white_list=FLAGS["actions_white_list"])
+            action = select_action(model, state[0], PARAMS['exploration'],
+                                    white_list=FLAGS["actions_white_list"],
+                                    rev_w_=FLAGS["reverse_actions_filter_map"])
             # Take the action
+
             action_log.append(env.action_spaces[0].names[action])
             state, reward, done, _ = env.step(action)
             # reward calculation
@@ -326,9 +354,14 @@ def TrainActorCritic(env, PARAMS=FLAGS,
                                       reward_if_list_func(state[2]),
                                       prev_size,
                                       prev_runtime)
+            if reward <= 0.:
+                pat += 1
+            if (FLAGS["patience"] <= pat):
+                #print(episode, ": Patience limit exceed", action_log, "; Episode reward:", ep_reward + reward)
+                ep_reward -= 1
+                done = True
             prev_size = state[1]
             prev_runtime = reward_if_list_func(state[2])
-
             size_rewards = [env.hetero_os_baselines[0], state[1]]
             runtime_rewards = [reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2])]
             if size_rewards[1] < size_rewards[0]:
@@ -368,7 +401,7 @@ def TrainActorCritic(env, PARAMS=FLAGS,
 
 def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz", actions_whitelist_names=None):
     if benchmark is None:
-        benchmark = "cbench-v1/crc32"
+        benchmark = "cbench-v1/qsort"
     env = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark=benchmark,  # selects the program to compile
@@ -379,6 +412,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
     if actions_whitelist_names:
         FLAGS["actions_white_list"] = [env.action_spaces[0].names.index(action) for action in actions_whitelist_names]
         FLAGS["actions_filter_map"] = remap_actions(FLAGS["actions_white_list"])
+        FLAGS["reverse_actions_filter_map"] = {v: k for k, v in FLAGS["actions_filter_map"].items()}
     env = TimeLimit(env, max_episode_steps=FLAGS["episode_len"])
     baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
@@ -396,7 +430,7 @@ def main():
     torch.manual_seed(FLAGS['seed'])
     random.seed(FLAGS['seed'])
 
-    with make_env(actions_whitelist_names=actions_oz_extra) as env:
+    with make_env(actions_whitelist_names=actions_oz_baseline) as env:
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
@@ -404,6 +438,8 @@ def main():
         # Performance varies greatly with random initialization and
         # other random choices, so run the process multiple times to
         # determine the distribution of outcomes.
+        #single_pass_validate(env, reward_estimator=const_factor_threshold)
+        #sys.exit(0)
         performances = []
         for i in range(1, FLAGS['iterations'] + 1):
             FLAGS["logger"].save_and_print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
