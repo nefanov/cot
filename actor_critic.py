@@ -358,14 +358,14 @@ def TrainActorCritic(env, PARAMS=FLAGS,
                 pat += 1
             if (FLAGS["patience"] <= pat):
                 #print(episode, ": Patience limit exceed", action_log, "; Episode reward:", ep_reward + reward)
-                ep_reward -= 1
                 done = True
             prev_size = state[1]
             prev_runtime = reward_if_list_func(state[2])
             size_rewards = [env.hetero_os_baselines[0], state[1]]
             runtime_rewards = [reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2])]
             if size_rewards[1] < size_rewards[0]:
-                print("Gained:", size_rewards, runtime_rewards, "size gain:", math.fabs(size_rewards[1] - size_rewards[0]) * 100/size_rewards[0], "%")
+                print(episode, "Gained:", size_rewards, runtime_rewards, "size gain:", math.fabs(size_rewards[1] - size_rewards[0]) * 100/size_rewards[0], "%")
+                print(action_log)
             model.rewards.append(reward)
             ep_reward += reward
             if done:
@@ -425,12 +425,12 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
     return env
 
 
-def main():
+def main(MODE="single_pass_validate"):
     """Main entry point."""
     torch.manual_seed(FLAGS['seed'])
     random.seed(FLAGS['seed'])
 
-    with make_env(actions_whitelist_names=actions_oz_baseline) as env:
+    with make_env(actions_whitelist_names=actions_oz_extra) as env:
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
@@ -438,8 +438,9 @@ def main():
         # Performance varies greatly with random initialization and
         # other random choices, so run the process multiple times to
         # determine the distribution of outcomes.
-        #single_pass_validate(env, reward_estimator=const_factor_threshold)
-        #sys.exit(0)
+        if MODE == "single_pass_validate":
+            single_pass_validate(env, reward_estimator=const_factor_threshold)
+            sys.exit(0)
         performances = []
         for i in range(1, FLAGS['iterations'] + 1):
             FLAGS["logger"].save_and_print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
@@ -454,4 +455,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(None)
