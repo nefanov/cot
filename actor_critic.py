@@ -24,6 +24,7 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 from rewards import const_factor_threshold
 from action_spaces_presets import *
 from logger import LogMode, Logger
+from search_policies import pick_max_size_gain
 
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
@@ -346,14 +347,6 @@ def examine_each_action(env, state, reward_estimator=const_factor_threshold, rew
     #pprint.pprint(passes_results)
     return passes_results
     # ------------------------------------------
-
-
-def pick_max_size_gain(results: list):
-    max_item = results[0]
-    for item in results:
-        if item["size gain %"] > max_item["size gain %"]:
-            max_item = item
-    return max_item
 
 
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
