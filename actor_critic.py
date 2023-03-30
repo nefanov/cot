@@ -308,14 +308,8 @@ def single_pass_eval(env, reward_estimator=const_factor_threshold,
         prev_runtime = reward_if_list_func(state[2])
         action = v
         state, r, d, _ = env.step(v)
-        reward = reward_estimator(env.hetero_os_baselines[0],
-                                  state[1],
-                                  reward_if_list_func(env.hetero_os_baselines[1]),
-                                  reward_if_list_func(state[2]),
-                                  prev_size,
-                                  prev_runtime)
-        print("Action", env.action_spaces[0].names[action], "R", reward,
-              "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
+        reward = reward_estimator(env.hetero_os_baselines[0], state[1], reward_if_list_func(env.hetero_os_baselines[1]), reward_if_list_func(state[2]), prev_size,prev_runtime)
+        print("Action", env.action_spaces[0].names[action], "R", reward, "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
 
 
 def one_pass_perform(env, prev_state, action, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
@@ -334,7 +328,6 @@ def one_pass_perform(env, prev_state, action, reward_estimator=const_factor_thre
                               reward_if_list_func(state[2]),
                               prev_size,
                               prev_runtime)
-    # print("Action", env.action_spaces[0].names[v], "R", reward,"; size:", prev_size, "->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
     return {"action": env.action_spaces[0].names[v],
             "action_num": v,
             "reward": reward,
@@ -366,20 +359,25 @@ def pick_max_size_gain(results: list):
 
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
-                         step_lim=10, pick_pass = pick_max_size_gain, patience=3):
+                         step_lim=10, pick_pass=pick_max_size_gain, patience=3):
     state = env.reset()
     results = list()
     pat = 0
     action_log = []
     for i in range(step_lim):
+        print("step", i)
         results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
         best = pick_pass(results)
-        state, reward, d, _ = env.step(best["action_num"]) # apply. state and reward updates
+        state, reward, d, _ = env.step(best["action_num"])  # apply. state and reward updates
         action_log.append(best)
         if best['reward'] <= .0:
             pat += 1
             if patience <= pat:
+                print("=============PATIENCE LIMIT EXCEEDED===============")
                 break
+        print("Current action on step", i,":")
+        pprint.pprint(best)
+    print("====================================================")
     pprint.pprint(action_log)
 
 
