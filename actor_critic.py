@@ -341,9 +341,8 @@ def examine_each_action(env, state, reward_estimator=const_factor_threshold, rew
     passes_list = FLAGS["reverse_actions_filter_map"]
     passes_results = []
     for k, v in passes_list.items():
-        copy_env = copy.deepcopy(env)
-        passes_results.append(one_pass_perform(copy_env, state, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
-        del copy_env
+        with copy.deepcopy(env) as copy_env:
+            passes_results.append(one_pass_perform(copy_env, state, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
     #pprint.pprint(passes_results)
     return passes_results
     # ------------------------------------------
