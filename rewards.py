@@ -38,11 +38,11 @@ def const_factor_threshold(baseline_m,
         d = d / m_norm
     if d >= 0: # positive result: argmin parameter decreasing
         if (f_n > 0) or (f_n <= 0 and math.fabs(f_n) < threshold):  # if const param increased only a little, it is OK
-            return (1. + f_n) * d
+            return  d
         else:
             return 0.
     else:
-        return (1-f_n) * d
+        return  d
 
 
 if __name__ == '__main__':

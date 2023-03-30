@@ -1,3 +1,4 @@
+import copy
 import math
 import random
 import statistics
@@ -296,12 +297,12 @@ def finish_episode(model, optimizer) -> float:
     return loss_value
 
 
-def single_pass_validate(env, reward_estimator=const_factor_threshold,
-                              reward_if_list_func=lambda a: np.mean(a)):
+def single_pass_eval(env, reward_estimator=const_factor_threshold,
+                     reward_if_list_func=lambda a: np.mean(a), need_reset=True):
     passes_list = FLAGS["reverse_actions_filter_map"]
     for k,v in passes_list.items():
-        state = env.reset()
-        ep_reward = 0
+        if need_reset:
+            state = env.reset()
         prev_size = state[1]
         prev_runtime = reward_if_list_func(state[2])
         action = v
@@ -314,6 +315,41 @@ def single_pass_validate(env, reward_estimator=const_factor_threshold,
                                   prev_runtime)
         print("Action", env.action_spaces[0].names[action], "R", reward,
               "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
+
+
+def one_pass_perform(env, action, reward_estimator=const_factor_threshold,
+                          reward_if_list_func=lambda a: np.mean(a)):
+    passes_list = FLAGS["reverse_actions_filter_map"]
+    v = action
+    state_1 = env.observations[1]
+    ep_reward = 0
+    prev_size = state_1
+    state_2 = env.observations[2]
+    prev_runtime = reward_if_list_func(state_2)
+    action = v
+    state, r, d, _ = env.step(v)
+    reward = reward_estimator(env.hetero_os_baselines[0],
+                              state[1],
+                              reward_if_list_func(env.hetero_os_baselines[1]),
+                              reward_if_list_func(state[2]),
+                              prev_size,
+                              prev_runtime)
+    print("Action", env.action_spaces[0].names[action], "R", reward,
+          "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
+    return reward, prev_size, state[1], prev_runtime, reward_if_list_func(state[2])
+
+def greedy_pick_and_use(env, reward_estimator=const_factor_threshold,
+                        reward_if_list_func=lambda a: np.mean(a)):
+    # which pass on this state gives maximum gain:
+    passes_list = FLAGS["reverse_actions_filter_map"]
+    passes_results = []
+    for k, v in passes_list.items():
+        copy_env = copy.deepcopy(env)
+        passes_results.append(one_pass_perform(copy_env, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
+    print(passes_results)
+    # ------------------------------------------
+
+
 
 def TrainActorCritic(env, PARAMS=FLAGS,
                      reward_estimator=const_factor_threshold,
@@ -439,7 +475,10 @@ def main(MODE="single_pass_validate"):
         # other random choices, so run the process multiple times to
         # determine the distribution of outcomes.
         if MODE == "single_pass_validate":
-            single_pass_validate(env, reward_estimator=const_factor_threshold)
+            single_pass_eval(env, reward_estimator=const_factor_threshold)
+            sys.exit(0)
+        elif MODE == "greedy":
+            greedy_pick_and_use(env, reward_estimator=const_factor_threshold)
             sys.exit(0)
         performances = []
         for i in range(1, FLAGS['iterations'] + 1):
@@ -455,4 +494,4 @@ def main(MODE="single_pass_validate"):
 
 
 if __name__ == "__main__":
-    main(None)
+    main("greedy")
