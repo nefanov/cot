@@ -315,7 +315,7 @@ def single_pass_eval(env, reward_estimator=const_factor_threshold,
 
 def one_pass_perform(env, prev_state, action, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
     """
-    one iteration of search
+    one iteration of search: try all the passes, then return statistics
     """
     passes_list = FLAGS["reverse_actions_filter_map"]
     v = action
@@ -344,9 +344,7 @@ def examine_each_action(env, state, reward_estimator=const_factor_threshold, rew
     for k, v in passes_list.items():
         with copy.deepcopy(env) as copy_env:
             passes_results.append(one_pass_perform(copy_env, state, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
-    #pprint.pprint(passes_results)
     return passes_results
-    # ------------------------------------------
 
 
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
