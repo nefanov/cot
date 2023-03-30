@@ -6,6 +6,7 @@ from collections import namedtuple, OrderedDict
 from typing import List
 import numpy as np
 import sys
+import pprint
 
 #ml dependencies
 import gym
@@ -317,16 +318,15 @@ def single_pass_eval(env, reward_estimator=const_factor_threshold,
               "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
 
 
-def one_pass_perform(env, action, reward_estimator=const_factor_threshold,
-                          reward_if_list_func=lambda a: np.mean(a)):
+def one_pass_perform(env, prev_state, action, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
+    """
+    one iteration of search
+    """
     passes_list = FLAGS["reverse_actions_filter_map"]
     v = action
-    state_1 = env.observations[1]
     ep_reward = 0
-    prev_size = state_1
-    state_2 = env.observations[2]
-    prev_runtime = reward_if_list_func(state_2)
-    action = v
+    prev_size = prev_state[1]
+    prev_runtime = reward_if_list_func(prev_state[2])
     state, r, d, _ = env.step(v)
     reward = reward_estimator(env.hetero_os_baselines[0],
                               state[1],
@@ -334,26 +334,56 @@ def one_pass_perform(env, action, reward_estimator=const_factor_threshold,
                               reward_if_list_func(state[2]),
                               prev_size,
                               prev_runtime)
-    print("Action", env.action_spaces[0].names[action], "R", reward,
-          "; size:",prev_size,"->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
-    return reward, prev_size, state[1], prev_runtime, reward_if_list_func(state[2])
+    # print("Action", env.action_spaces[0].names[v], "R", reward,"; size:", prev_size, "->", state[1], "; runtime:", prev_runtime,"->", reward_if_list_func(state[2]))
+    return {"action": env.action_spaces[0].names[v],
+            "action_num": v,
+            "reward": reward,
+            "prev_size": prev_size, "size": state[1],
+            "prev_runtime": prev_runtime, "runtime": reward_if_list_func(state[2]),
+            "size gain %": (prev_size - state[1]) / prev_size * 100
+            }
 
-def greedy_pick_and_use(env, reward_estimator=const_factor_threshold,
-                        reward_if_list_func=lambda a: np.mean(a)):
-    # which pass on this state gives maximum gain:
+
+def examine_each_action(env, state, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a), step_lim=10):
     passes_list = FLAGS["reverse_actions_filter_map"]
     passes_results = []
     for k, v in passes_list.items():
         copy_env = copy.deepcopy(env)
-        passes_results.append(one_pass_perform(copy_env, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
-    print(passes_results)
+        passes_results.append(one_pass_perform(copy_env, state, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
+        del copy_env
+    #pprint.pprint(passes_results)
+    return passes_results
     # ------------------------------------------
 
 
+def pick_max_size_gain(results: list):
+    max_item = results[0]
+    for item in results:
+        if item["size gain %"] > max_item["size gain %"]:
+            max_item = item
+    return max_item
 
-def TrainActorCritic(env, PARAMS=FLAGS,
-                     reward_estimator=const_factor_threshold,
-                     reward_if_list_func=lambda a: np.mean(a)):
+
+def search_strategy_eval(env, reward_estimator=const_factor_threshold,
+                         reward_if_list_func=lambda a: np.mean(a),
+                         step_lim=10, pick_pass = pick_max_size_gain, patience=3):
+    state = env.reset()
+    results = list()
+    pat = 0
+    action_log = []
+    for i in range(step_lim):
+        results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
+        best = pick_pass(results)
+        state, reward, d, _ = env.step(best["action_num"]) # apply. state and reward updates
+        action_log.append(best)
+        if best['reward'] <= .0:
+            pat += 1
+            if patience <= pat:
+                break
+    pprint.pprint(action_log)
+
+
+def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
     bplen = len(env.action_spaces[0].names)
     try:
         bplen = len(FLAGS["actions_white_list"])
@@ -478,7 +508,7 @@ def main(MODE="single_pass_validate"):
             single_pass_eval(env, reward_estimator=const_factor_threshold)
             sys.exit(0)
         elif MODE == "greedy":
-            greedy_pick_and_use(env, reward_estimator=const_factor_threshold)
+            search_strategy_eval(env, reward_estimator=const_factor_threshold)
             sys.exit(0)
         performances = []
         for i in range(1, FLAGS['iterations'] + 1):
