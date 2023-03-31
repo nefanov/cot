@@ -356,11 +356,11 @@ def examine_each_action(env, state, reward_estimator=const_factor_threshold, rew
             passes_results.append(one_pass_perform(copy_env, state, v, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func))
     return passes_results
 
-"""
-this is very slow (linear) implementation of max subseq search from start element
-"""
 
 def max_subseq_from_start(seq: list, episode_reward=0.) -> list:
+    """
+    this is very slow (O(n)) implementation of max subseq search from start element
+    """
     gain = episode_reward
     up_lim = len(seq) - 1
     for i in range(len(seq)):
@@ -369,6 +369,7 @@ def max_subseq_from_start(seq: list, episode_reward=0.) -> list:
             gain = S
             up_lim = i
     return seq[:up_lim]
+
 
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
