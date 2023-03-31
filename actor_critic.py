@@ -24,7 +24,7 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 from rewards import const_factor_threshold
 from action_spaces_presets import *
 from logger import LogMode, Logger
-from search_policies import pick_max_size_gain
+from search_policies import pick_max_size_gain, pick_all_positive_size_gain
 
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
@@ -349,7 +349,7 @@ def examine_each_action(env, state, reward_estimator=const_factor_threshold, rew
 
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
-                         step_lim=10, pick_pass=pick_max_size_gain, patience=3):
+                         step_lim=10, pick_pass=pick_all_positive_size_gain, patience=3):
     state = env.reset()
     results = list()
     pat = 0
@@ -357,7 +357,7 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
     for i in range(step_lim):
         print("step", i)
         results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
-        best = pick_pass(results)
+        best = pick_pass(results)[-1]
         state, reward, d, _ = env.step(best["action_num"])  # apply. state and reward updates
         action_log.append(best)
         if best['reward'] <= .0:
