@@ -1,6 +1,6 @@
 def pick_max_size_gain(results: list):
     results = sorted(results, key=lambda d: d['size gain %']).reverse()
-    return max_item[0]
+    return results[0]
 
 
 def pick_all_positive_size_gain(results: list):
