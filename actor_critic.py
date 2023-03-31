@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 import sys
 import pprint
+from enum import Enum
 
 #ml dependencies
 import gym
@@ -24,7 +25,15 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 from rewards import const_factor_threshold
 from action_spaces_presets import *
 from logger import LogMode, Logger
-from search_policies import pick_max_size_gain, pick_all_positive_size_gain
+from search_policies import *
+
+
+class Runmode(Enum):
+    GREEDY = 1
+    RANDOM = 2
+    RANDOM_POSITIVES = 3
+    AC_BASIC = 4
+
 
 flags = {}
 flags.update({"episode_len": 15})  #"Number of transitions per episode."
@@ -40,7 +49,8 @@ flags.update({"seed": 0})
 flags.update({"log_mode": LogMode.SHORT})
 flags.update({"logger": Logger(flags["log_mode"])})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
-flags.update({"patience": 5}) # patience for steps with no positive reward
+flags.update({"patience": 5})  # patience for steps with no positive reward
+flags.update({"search_iterations": 2})  # for non-RL search it is required dramatically more steps
 FLAGS = flags
 
 eps = np.finfo(np.float32).eps.item()
@@ -302,7 +312,7 @@ def finish_episode(model, optimizer) -> float:
 def single_pass_eval(env, reward_estimator=const_factor_threshold,
                      reward_if_list_func=lambda a: np.mean(a), need_reset=True):
     passes_list = FLAGS["reverse_actions_filter_map"]
-    for k,v in passes_list.items():
+    for k, v in passes_list.items():
         if need_reset:
             state = env.reset()
         prev_size = state[1]
@@ -349,27 +359,36 @@ def examine_each_action(env, state, reward_estimator=const_factor_threshold, rew
 
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
-                         step_lim=10, pick_pass=pick_all_positive_size_gain, patience=3):
+                         step_lim=10, pick_pass=pick_random_from_positive, patience=FLAGS['patience']):
     state = env.reset()
     results = list()
     pat = 0
     action_log = []
+    episode_reward = 0.0
+    episode_size_gain = 0.0
     for i in range(step_lim):
         print("step", i)
         results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
         best = pick_pass(results)[-1]
         state, reward, d, _ = env.step(best["action_num"])  # apply. state and reward updates
         action_log.append(best)
+        try:
+            episode_reward += reward
+        except:
+            pass
+        episode_size_gain += best['size gain %']
+
         if best['reward'] <= .0:
             pat += 1
             if patience <= pat:
                 print("=============PATIENCE LIMIT EXCEEDED===============")
                 break
-        print("Current action on step", i,":")
-        pprint.pprint(best)
+        #print("Current action on step", i,":")
+        #pprint.pprint(best)
 
     print("====================================================")
     pprint.pprint(action_log)
+    return {"action_log": action_log, "episode_reward": episode_reward, "episode_size_gain": episode_size_gain}
 
 
 def TrainActorCritic(env, PARAMS=FLAGS, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
@@ -481,36 +500,55 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
 
 
 def main(MODE="single_pass_validate"):
-    """Main entry point."""
-    torch.manual_seed(FLAGS['seed'])
-    random.seed(FLAGS['seed'])
+    call_evaluator = None
+    if MODE == Runmode.AC_BASIC:
+        pass
+    elif MODE == Runmode.GREEDY:
+        call_evaluator = pick_max_size_gain
+    elif MODE == Runmode.RANDOM:
+        call_evaluator = pick_random
+    elif MODE == Runmode.RANDOM_POSITIVES:
+        call_evaluator = pick_random_from_positive
+    else:
+        print("Incorrect run mode")
+        sys.exit(1)
 
     with make_env(actions_whitelist_names=actions_oz_extra) as env:
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
 
-        # Performance varies greatly with random initialization and
-        # other random choices, so run the process multiple times to
-        # determine the distribution of outcomes.
-        if MODE == "single_pass_validate":
-            single_pass_eval(env, reward_estimator=const_factor_threshold)
+        if MODE != Runmode.AC_BASIC:
+            seq_list_lens = []
+            for i in range(FLAGS["search_iterations"]):
+                print("Iteration", i)
+                seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator))
+            positive_res = [s for s in seq_list_lens if s["episode_reward"] >= 0.]
+            print("Iteration", i, "statistics:")
+            __max_size_gain = max(positive_res, key=lambda a: a["episode_size_gain"])
+            print("Max size gain:")
+            pprint.pprint(__max_size_gain)
+            print("On sequence:")
+            seq = [(d['action'], d['size gain %']) for d in __max_size_gain['action_log']]
+            for item in seq:
+                print(item)
+            print("---------------------------------------------------------------------------")
             sys.exit(0)
-        elif MODE == "greedy":
-            search_strategy_eval(env, reward_estimator=const_factor_threshold)
-            sys.exit(0)
-        performances = []
-        for i in range(1, FLAGS['iterations'] + 1):
-            FLAGS["logger"].save_and_print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
-            performances.append(TrainActorCritic(env, reward_estimator=const_factor_threshold))
+        else:
+            torch.manual_seed(FLAGS['seed'])
+            random.seed(FLAGS['seed'])
+            performances = []
+            for i in range(1, FLAGS['iterations'] + 1):
+                FLAGS["logger"].save_and_print(f"\n*** Iteration {i} of {FLAGS['iterations']}")
+                performances.append(TrainActorCritic(env, reward_estimator=const_factor_threshold))
 
-        FLAGS["logger"].save_and_print("\n*** Summary")
-        FLAGS["logger"].save_and_print(f"Final performances: {performances}\n")
-        FLAGS["logger"].save_and_print(f"  Best performance: {max(performances):.2f}")
-        FLAGS["logger"].save_and_print(f"Median performance: {statistics.median(performances):.2f}")
-        FLAGS["logger"].save_and_print(f"   Avg performance: {statistics.mean(performances):.2f}")
-        FLAGS["logger"].save_and_print(f" Worst performance: {min(performances):.2f}")
+            FLAGS["logger"].save_and_print("\n*** Summary")
+            FLAGS["logger"].save_and_print(f"Final performances: {performances}\n")
+            FLAGS["logger"].save_and_print(f"  Best performance: {max(performances):.2f}")
+            FLAGS["logger"].save_and_print(f"Median performance: {statistics.median(performances):.2f}")
+            FLAGS["logger"].save_and_print(f"   Avg performance: {statistics.mean(performances):.2f}")
+            FLAGS["logger"].save_and_print(f" Worst performance: {min(performances):.2f}")
 
 
 if __name__ == "__main__":
-    main("greedy")
+    main(Runmode.RANDOM)
