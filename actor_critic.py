@@ -383,8 +383,6 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
             if patience <= pat:
                 print("=============PATIENCE LIMIT EXCEEDED===============")
                 break
-        #print("Current action on step", i,":")
-        #pprint.pprint(best)
 
     print("====================================================")
     pprint.pprint(action_log)
@@ -524,6 +522,7 @@ def main(MODE="single_pass_validate"):
                 print("Iteration", i)
                 seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator))
             positive_res = [s for s in seq_list_lens if s["episode_reward"] >= 0.]
+
             print("Iteration", i, "statistics:")
             __max_size_gain = max(positive_res, key=lambda a: a["episode_size_gain"])
             print("Max size gain:")
