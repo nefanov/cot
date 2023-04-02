@@ -53,7 +53,7 @@ flags.update({"log_mode": LogMode.SHORT})
 flags.update({"logger": Logger(flags["log_mode"])})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
 flags.update({"patience": 5})  # patience for steps with no positive reward
-flags.update({"search_iterations": 100})  # for non-RL search it is required dramatically more steps
+flags.update({"search_iterations": 2})  # for non-RL search it is required dramatically more steps
 FLAGS = flags
 
 eps = np.finfo(np.float32).eps.item()

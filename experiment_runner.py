@@ -49,7 +49,6 @@ def main(MODE="single_pass_validate"):
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
-
         if MODE != Runmode.AC_BASIC:
             seq_list_lens = []
             for i in range(FLAGS["search_iterations"]):
@@ -59,12 +58,18 @@ def main(MODE="single_pass_validate"):
 
             print("Iteration", i, "statistics:")
             __max_size_gain = max(positive_res, key=lambda a: a["episode_size_gain"])
-            print("Max size gain:")
-            pprint.pprint(__max_size_gain)
-            print("On sequence:")
+            #print("Action log for max size gain:")
+            #pprint.pprint(__max_size_gain)
+            print("Max size gain on sequence:")
             seq = [(d['action'], d['size gain %']) for d in __max_size_gain['action_log']]
             for item in seq:
                 print(item)
+            print("Total size gain:",
+                  (env.hetero_os_baselines[0] - __max_size_gain['action_log'][-1]['size']) / env.hetero_os_baselines[
+                      0]*100,"%")
+            print("Total perf diff:",
+                  (env.hetero_os_baselines[1] - __max_size_gain['action_log'][-1]['runtime']) / env.hetero_os_baselines[
+                      1] * 100, "%")
             print("---------------------------------------------------------------------------")
             sys.exit(0)
         else:

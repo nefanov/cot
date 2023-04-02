@@ -2,6 +2,7 @@ import random
 
 random.seed(0)
 
+
 def pick_max_size_gain(results: list, **kwargs) -> list:
     results = sorted(results, key=lambda d: d['size gain %'])
     return results
@@ -34,6 +35,7 @@ def pick_random_from_positive_used(results: list, **kwargs) -> list:
                 return [candidate]
 
         if not candidate:
+            print("Pick repeated candidate randomly")
             return [random.choice(res)]
     except:
         print(__name__, ": exception, just return random from whole results")
