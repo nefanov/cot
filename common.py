@@ -34,7 +34,8 @@ class Runmode(Enum):
     GREEDY = 1
     RANDOM = 2
     RANDOM_POSITIVES = 3
-    AC_BASIC = 4
+    RANDOM_POSITIVES_USED = 4
+    AC_BASIC = 5
 
 
 flags = {}

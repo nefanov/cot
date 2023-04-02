@@ -20,3 +20,21 @@ def pick_random_from_positive(results: list, **kwargs) -> list:
 
 def pick_random(results: list, **kwargs) -> list:
     return [random.choice(results)]
+
+
+def pick_random_from_positive_used(results: list, **kwargs) -> list:
+    res = pick_all_positive_size_gain(results)
+    try:
+        candidate = None
+        history = kwargs['action_log']
+        for i in range(len(res)):
+            picked = random.choice(res)
+            if picked['action_num'] not in history:
+                candidate = picked
+                return [candidate]
+
+        if not candidate:
+            return [random.choice(res)]
+    except:
+        print(__name__, ": exception, just return random from whole results")
+        return [pick_random(res)]

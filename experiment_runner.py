@@ -39,6 +39,8 @@ def main(MODE="single_pass_validate"):
         call_evaluator = pick_random
     elif MODE == Runmode.RANDOM_POSITIVES:
         call_evaluator = pick_random_from_positive
+    elif MODE == Runmode.RANDOM_POSITIVES_USED:
+        call_evaluator = pick_random_from_positive_used
     else:
         print("Incorrect run mode")
         sys.exit(1)
@@ -82,4 +84,4 @@ def main(MODE="single_pass_validate"):
 
 
 if __name__ == "__main__":
-    main(Runmode.RANDOM)
+    main(Runmode.RANDOM_POSITIVES_USED)

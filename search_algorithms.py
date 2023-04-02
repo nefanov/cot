@@ -78,7 +78,7 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
         results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
         param = {}
         if pick_pass_args == 'action_log':
-            param.update({pick_pass_args: action_log}) # some strategies uses previous actions log | etc
+            param.update({pick_pass_args: [a['action_num'] for a in action_log]}) # some strategies uses previous actions log | etc
         best = pick_pass(results, **param)[-1]
         state, reward, d, _ = env.step(best["action_num"])  # apply. state and reward updates
         action_log.append(best)
