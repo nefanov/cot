@@ -11,3 +11,12 @@ Tools for manipulation with order-dependency graphs (ODG), which are frequently 
 ### cgym_tools
 
 Tools for manipulation with CompilerGym. Note: downstream ver. of CompilerGym is used (includes Ir2Vec patch, etc).
+
+### experiment_runner
+
+Script for running search / RL experiments from this scope:
+
+1. #### search_algorithms
+    - greedy, random search policies for size minimization under const performance
+2. #### actor_critic
+    - self implemented AC with historical observation & size minimization under const performance
