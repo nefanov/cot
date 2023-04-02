@@ -26,7 +26,7 @@ from compiler_gym.wrappers import TimeLimit, ConstrainedCommandline
 #cross-cot deps
 from rewards import const_factor_threshold
 from action_spaces_presets import *
-from logger import LogMode, Logger
+from logger import LogMode, Logger, printRed, printGreen, printYellow, printLightPurple
 from search_policies import *
 
 
@@ -35,7 +35,10 @@ class Runmode(Enum):
     RANDOM = 2
     RANDOM_POSITIVES = 3
     RANDOM_POSITIVES_USED = 4
-    AC_BASIC = 5
+    LEAST_FROM_POSITIVES = 5
+    GREATEST_FROM_POSITIVE_SAMPLES = 6
+    LEAST_FROM_POSITIVE_SAMPLES = 7
+    AC_BASIC = 8
 
 
 flags = {}
@@ -53,7 +56,7 @@ flags.update({"log_mode": LogMode.SHORT})
 flags.update({"logger": Logger(flags["log_mode"])})
 flags.update({"actions_white_list": None}) # by default (if None), all actions from any action space are possible
 flags.update({"patience": 5})  # patience for steps with no positive reward
-flags.update({"search_iterations": 2})  # for non-RL search it is required dramatically more steps
+flags.update({"search_iterations": 100})  # for non-RL search it is required dramatically more steps
 FLAGS = flags
 
 eps = np.finfo(np.float32).eps.item()

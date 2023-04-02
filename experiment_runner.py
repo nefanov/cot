@@ -1,3 +1,5 @@
+import sys
+
 from common import *
 from actor_critic import HistoryObservation, TrainActorCritic
 from search_algorithms import search_strategy_eval
@@ -5,7 +7,7 @@ from search_algorithms import search_strategy_eval
 
 def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz", actions_whitelist_names=None):
     if benchmark is None:
-        benchmark = "cbench-v1/qsort"
+        benchmark = "cbench-v1/blowfish"
     env = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark=benchmark,  # selects the program to compile
@@ -29,7 +31,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
     return env
 
 
-def main(MODE="single_pass_validate"):
+def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=None):
     call_evaluator = None
     if MODE == Runmode.AC_BASIC:
         pass
@@ -41,19 +43,25 @@ def main(MODE="single_pass_validate"):
         call_evaluator = pick_random_from_positive
     elif MODE == Runmode.RANDOM_POSITIVES_USED:
         call_evaluator = pick_random_from_positive_used
+    elif MODE == Runmode.LEAST_FROM_POSITIVES:
+        call_evaluator = pick_least_from_positive
+    elif MODE == Runmode.GREATEST_FROM_POSITIVE_SAMPLES:
+        call_evaluator = pick_least_from_positive_samples
+    elif MODE == Runmode.LEAST_FROM_POSITIVE_SAMPLES:
+        call_evaluator = pick_greatest_from_positive_samples
     else:
         print("Incorrect run mode")
         sys.exit(1)
 
-    with make_env(actions_whitelist_names=actions_oz_extra) as env:
+    with make_env(actions_whitelist_names=actions, benchmark=benchmark) as env:
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
         if MODE != Runmode.AC_BASIC:
             seq_list_lens = []
             for i in range(FLAGS["search_iterations"]):
-                print("Iteration", i)
-                seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator))
+                printRed("Iteration " +str(i))
+                seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator, step_lim=15))
             positive_res = [s for s in seq_list_lens if s["episode_reward"] >= 0.]
 
             print("Iteration", i, "statistics:")
@@ -89,4 +97,10 @@ def main(MODE="single_pass_validate"):
 
 
 if __name__ == "__main__":
-    main(Runmode.RANDOM_POSITIVES_USED)
+    benchmark = "cbench-v1/qsort" # default if not set
+    try:
+        if sys.argv[1] == "-cbench":
+            benchmark = "cbench-v1/" + sys.argv[2]
+    except:
+        pass
+    main(Runmode.LEAST_FROM_POSITIVE_SAMPLES, actions=actions_oz_extra, benchmark=benchmark)

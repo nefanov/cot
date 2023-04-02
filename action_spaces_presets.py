@@ -23,7 +23,9 @@ actions_test = [
     ]
 
 actions_oz_extra = [
+        "-simplifycfg",
         "-loop-simplify",
+        "-jump-threading",
         "-lcssa",
         "-instcombine",
         "-break-crit-edges",
@@ -49,7 +51,6 @@ actions_oz_extra = [
         "-prune-eh",
         "-reassociate",
         "-early-cse-memssa",
-        #"-pre",
         "-sroa",
         "-sccp",
     ]

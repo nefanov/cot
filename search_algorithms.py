@@ -74,7 +74,7 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
     episode_reward = 0.0
     episode_size_gain = 0.0
     for i in range(step_lim):
-        print("step", i)
+        printLightPurple("step "+ str(i))
         results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
         param = {}
         if pick_pass_args == 'action_log':
