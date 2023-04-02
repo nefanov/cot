@@ -1,2 +1,2 @@
-1) Provide custom benchmarks for experiment_runner as it done in cgym_tools
-2) Make search strategy picking according to observation history
+1) Provide custom benchmarks for experiment_runner as it done in cgym_tools -- in progress
+2) Make search strategy picking according to observation history -- done as a policy
