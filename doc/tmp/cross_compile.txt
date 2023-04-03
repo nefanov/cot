@@ -1,0 +1,1 @@
+clang --target=aarch64-none-eabihf 1.c -c # --> 1.o
