@@ -27,17 +27,34 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
                            name="program.c",
                            run_args=list(),
                            warmup_count=10,
-                           run_timeout_seconds=10):
+                           run_timeout_seconds=10,
+                           sys_settings = {}):
     env.reset()
     env.runtime_observation_count = runtime_observation_count
     env.runtime_warmup_runs_count = warmup_count
+    compiler = "$CC"
+    inputs = "$IN"
+    output_bin = "a.out"
+    arch = "native"
+    sys_lib_flags = llvm_benchmark.get_system_library_flags()
+    if 'compiler' in sys_settings.keys():
+        compiler = sys_settings['compiler']
+    if 'inputs' in sys_settings.keys():
+        inputs = sys_settings['inputs']
+    if 'sys_lib_flags' in sys_settings.keys():
+        sys_lib_flags = sys_settings['sys_lib_flags']
+    if 'output_bin' in sys_settings.keys():
+        output_bin = sys_settings['output_bin']
 
     benchmark = env.make_benchmark(Path(tmpdir) / name)
     benchmark.proto.dynamic_config.build_cmd.argument.extend(
-        ["$CC", "$IN"] + llvm_benchmark.get_system_library_flags()
+        [compiler, inputs] + sys_lib_flags
     )
-    benchmark.proto.dynamic_config.build_cmd.outfile.extend(["a.out"])
-    benchmark.proto.dynamic_config.build_cmd.timeout_seconds = 10
-    benchmark.proto.dynamic_config.run_cmd.argument.extend(["./a.out"] + run_args)
+    benchmark.proto.dynamic_config.build_cmd.outfile.extend([output_bin])
+    benchmark.proto.dynamic_config.build_cmd.timeout_seconds = run_timeout_seconds
+    if arch == "native":
+        benchmark.proto.dynamic_config.run_cmd.argument.extend(["./" + output_bin] + run_args)
+    elif arch == "qemu-aarch64":
+        pass
     benchmark.proto.dynamic_config.run_cmd.timeout_seconds = run_timeout_seconds
     return benchmark
