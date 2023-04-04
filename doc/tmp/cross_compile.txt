@@ -1,1 +1,6 @@
-clang --target=aarch64-none-eabihf 1.c -c # --> 1.o
+#clang --target=aarch64-none-eabihf 1.c -c # --> 1.o
+# from start to end:
+clang $1 --target=aarch64-linux-gnu -o hello -v
+
+# run
+qemu-aarch64 -L /path/to/sysroot-glibc-linaro-2.25  ./hello
