@@ -39,6 +39,9 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
     sys_lib_flags = llvm_benchmark.get_system_library_flags()
     if 'compiler' in sys_settings.keys():
         compiler = sys_settings['compiler']
+    if 'arch_triplet' in sys_settings.keys():
+        if sys_settings['arch_triplet'].startswith("aarch64"):
+            arch = "qemu-aarch64" # only this target is now supported
     if 'inputs' in sys_settings.keys():
         inputs = sys_settings['inputs']
     if 'sys_lib_flags' in sys_settings.keys():
@@ -55,6 +58,6 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
     if arch == "native":
         benchmark.proto.dynamic_config.run_cmd.argument.extend(["./" + output_bin] + run_args)
     elif arch == "qemu-aarch64":
-        pass
+        benchmark.proto.dynamic_config.run_cmd.argument.extend(["qemu-aarch64 -L " + sys_settings['target_libs_dir'] + " ./" + output_bin] + run_args)
     benchmark.proto.dynamic_config.run_cmd.timeout_seconds = run_timeout_seconds
     return benchmark
