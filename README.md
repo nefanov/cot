@@ -2,11 +2,11 @@
 
 Compiler Optimization Tools is the set of software packages for a wide-range compiler auto-tuning tasks
 
-## Supported architectures*
-AMD64 (as native)
-AARCH64 (tested with aarch64-linux-gnu triplet)
+## Supported architectures
+(mainly by custom_benchmark compile and run settings)
 
-* mainly by custom_benchmark compile and run settings
+1. AMD64 (as native)
+2. AARCH64 (tested with aarch64-linux-gnu triplet)
 
 ## Modules
 
