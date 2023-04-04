@@ -2,12 +2,6 @@
 
 Compiler Optimization Tools is the set of software packages for a wide-range compiler auto-tuning tasks
 
-## Supported architectures
-(mainly by custom_benchmark compile and run settings)
-
-1. AMD64 (as native)
-2. AARCH64 (tested with aarch64-linux-gnu triplet)
-
 ## Modules
 
 ### odg_tools
@@ -26,3 +20,9 @@ Script for running search / RL experiments from this scope:
     - greedy, random search policies for size minimization under const performance
 2. #### actor_critic
     - self implemented AC with historical observation & size minimization under const performance
+
+## Supported architectures
+(mainly by custom_benchmark compile and run settings)
+
+1. AMD64 (as native)
+2. AARCH64 (tested with aarch64-linux-gnu triplet)
