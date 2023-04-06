@@ -28,29 +28,28 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
                            run_args=list(),
                            warmup_count=10,
                            run_timeout_seconds=10,
-                           extra_objects_list = None,
-                           sys_settings = {}):
+                           extra_objects_list=None,
+                           extra_include_dirs=None,
+                           sys_settings={}):
     env.reset()
     env.runtime_observation_count = runtime_observation_count
     env.runtime_warmup_runs_count = warmup_count
-    compiler = "$CC"
-    inputs = "$IN"
-    output_bin = "a.out"
     arch = "native"
-    sys_lib_flags = llvm_benchmark.get_system_library_flags()
-    if 'compiler' in sys_settings.keys():
-        compiler = sys_settings['compiler']
+    compiler = sys_settings.get('compiler', "$CC")
+    inputs = sys_settings.get('inputs', "$IN")
+    output_bin = sys_settings.get('output_bin', "a.out")
+    sys_lib_flags = sys_settings.get('sys_lib_flags', llvm_benchmark.get_system_library_flags())
+    extra_obj = extra_objects_list if extra_objects_list else list()
+
     if 'arch_triplet' in sys_settings.keys():
         if sys_settings['arch_triplet'].startswith("aarch64"):
             arch = "qemu-aarch64" # only this target is now supported
-    if 'inputs' in sys_settings.keys():
-        inputs = sys_settings['inputs']
-    if 'sys_lib_flags' in sys_settings.keys():
-        sys_lib_flags = sys_settings['sys_lib_flags']
-    if 'output_bin' in sys_settings.keys():
-        output_bin = sys_settings['output_bin']
-    extra_obj = extra_objects_list if extra_objects_list else list()
 
+    #isystem_dirs_extra = list()
+    if extra_include_dirs:
+        for item in extra_include_dirs:
+            sys_lib_flags.append('-isystem')
+            sys_lib_flags.append(item)
 
     benchmark = env.make_benchmark(Path(tmpdir) / name)
     benchmark.proto.dynamic_config.build_cmd.argument.extend(

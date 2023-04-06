@@ -65,10 +65,11 @@ class Experiment:
                        fname=RUNCONFIG['dfl_prog_name'],
                        runtime_observation_count=RUNCONFIG['runtime_observation_count'],
                        extra_objects_list=list(),
+                       extra_include_dirs=list(),
                        run_args=list(),
                        rts=10):
         b = runnable_bench_onefile(self.env, runtime_observation_count=10,
-                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args, run_timeout_seconds=rts, extra_objects_list=extra_objects_list)
+                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args, run_timeout_seconds=rts, extra_objects_list=extra_objects_list, extra_include_dirs=extra_include_dirs)
         self.env.reset(benchmark=b)
         return self.env
 
@@ -123,7 +124,7 @@ def test_cycle():
         print(f"Step {i}, quality={episode_reward:.3%}")
 
 
-def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"], already_compiled_objs = list()):
+def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"], already_compiled_objs = list(), extra_include_dirs=list()):
     ex = Experiment(
         bench=None,#bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),
         observation_space="ObjectTextSizeBytes",  # selects the observation space
@@ -133,6 +134,7 @@ def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_pro
     #ex.env.reset(benchmark=b)
     ex.resetBenchmark(ex.env, runtime_observation_count=10, fname="myapp",
                       extra_objects_list=already_compiled_objs,
+                      extra_include_dirs=extra_include_dirs,
                       run_args=["10000", "10000"], rts=10)
 
     print("=====DUMP ACTIONS=====")
@@ -168,5 +170,5 @@ if __name__ == '__main__':
     #print("Test 200 times Ir2Vec")
     #test_cycle()
     print("====Dump action space====")
-    test_experiment_onefile(already_compiled_objs=["/home/nefanov/prog_test/cgym/cot/ext.o"])
+    test_experiment_onefile(already_compiled_objs=["/home/nefanov/prog_test/cgym/cot/ext.o"], extra_include_dirs=["/home/nefanov/prog_test/cgym/cot"])
     sys.exit(0)
