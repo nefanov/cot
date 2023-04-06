@@ -64,10 +64,11 @@ class Experiment:
                        tmpdir=RUNCONFIG['tmpdir'],
                        fname=RUNCONFIG['dfl_prog_name'],
                        runtime_observation_count=RUNCONFIG['runtime_observation_count'],
+                       extra_objects_list=list(),
                        run_args=list(),
                        rts=10):
         b = runnable_bench_onefile(self.env, runtime_observation_count=10,
-                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args, run_timeout_seconds=rts)
+                                   tmpdir=tmpdir, name=fname + ".c", run_args = run_args, run_timeout_seconds=rts, extra_objects_list=extra_objects_list)
         self.env.reset(benchmark=b)
         return self.env
 
@@ -122,15 +123,18 @@ def test_cycle():
         print(f"Step {i}, quality={episode_reward:.3%}")
 
 
-def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]):
+def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"], already_compiled_objs = list()):
     ex = Experiment(
         bench=None,#bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),
         observation_space="ObjectTextSizeBytes",  # selects the observation space
-        reward_space=RUNCONFIG['inital_reward_space'] #RewardMode.RUNTIMEPOINTESTIMATE,
+        reward_space=RUNCONFIG['inital_reward_space'], #RewardMode.RUNTIMEPOINTESTIMATE,
     )
     #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
     #ex.env.reset(benchmark=b)
-    ex.resetBenchmark(ex.env, runtime_observation_count=10, run_args=["10000","10000"], rts=10)
+    ex.resetBenchmark(ex.env, runtime_observation_count=10, fname="myapp",
+                      extra_objects_list=already_compiled_objs,
+                      run_args=["10000", "10000"], rts=10)
+
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
@@ -140,7 +144,6 @@ def test_experiment(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"]
     prev_obs = None
     for i in range(1000):
         action = ex.env.action_space.sample()
-        # print("A", action)
         print("Step", i, ", Action ", action, ":", ex.env.action_spaces[0].names[int(action.__repr__())])
         observation, reward, done, info = ex.env.step(action,
                  observation_spaces = [ ex.env.observation.spaces["Ir2vecFlowAware"],
@@ -165,5 +168,5 @@ if __name__ == '__main__':
     #print("Test 200 times Ir2Vec")
     #test_cycle()
     print("====Dump action space====")
-    test_experiment()
+    test_experiment_onefile(already_compiled_objs=["/home/nefanov/prog_test/cgym/cot/ext.o"])
     sys.exit(0)

@@ -28,6 +28,7 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
                            run_args=list(),
                            warmup_count=10,
                            run_timeout_seconds=10,
+                           extra_objects_list = None,
                            sys_settings = {}):
     env.reset()
     env.runtime_observation_count = runtime_observation_count
@@ -48,10 +49,12 @@ def runnable_bench_onefile(env: LlvmEnv, tmpdir, runtime_observation_count: int,
         sys_lib_flags = sys_settings['sys_lib_flags']
     if 'output_bin' in sys_settings.keys():
         output_bin = sys_settings['output_bin']
+    extra_obj = extra_objects_list if extra_objects_list else list()
+
 
     benchmark = env.make_benchmark(Path(tmpdir) / name)
     benchmark.proto.dynamic_config.build_cmd.argument.extend(
-        [compiler, inputs] + sys_lib_flags
+        [compiler, inputs] + extra_obj + sys_lib_flags
     )
     benchmark.proto.dynamic_config.build_cmd.outfile.extend([output_bin])
     benchmark.proto.dynamic_config.build_cmd.timeout_seconds = run_timeout_seconds
