@@ -27,36 +27,38 @@ RUNCONFIG['runtime_observation_count'] = 10
 Experiment on clang/llvm environment class
 '''
 class Experiment:
-    def __init__(self, bench, observation_space, reward_space, name="exp1"):
-        if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
-            # RS wrapped around CompilerGym RS
-            self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-                RUNCONFIG['compiler_env'],  # selects the compiler to use
-                benchmark=bench,  # selects the program to compile
-                observation_space=observation_space,  # selects the observation space
-                reward_space="ObjectTextSizeBytes",  # selects the optimization target
-            )
+    def __init__(self, env=None, bench=None, observation_space=None, reward_space=None, name="exp1"):
+        if not env: # make a new env
+            if reward_space == RewardMode.RUNTIMEPOINTESTIMATE:
+                # RS wrapped around CompilerGym RS
+                self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+                    RUNCONFIG['compiler_env'],  # selects the compiler to use
+                    benchmark=bench,  # selects the program to compile
+                    observation_space=observation_space,  # selects the observation space
+                    reward_space="ObjectTextSizeBytes",  # selects the optimization target
+                )
 
-            self.env = RuntimePointEstimateReward(self.env)
-            self.env.reset()
+                self.env = RuntimePointEstimateReward(self.env)
+                self.env.reset()
 
-        elif reward_space == "External":
-            # external RS
-            self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-                RUNCONFIG['compiler_env'],  # selects the compiler to use
-                benchmark=bench,  # selects the program to compile
-                observation_space=observation_space,  # selects the observation space
-                #reward_space=reward_space,  # selects the optimization target
-            )
-        else:
-            # CompilerGym RS
-            self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
-                RUNCONFIG['compiler_env'],  # selects the compiler to use
-                benchmark=bench,  # selects the program to compile
-                observation_space=observation_space,  # selects the observation space
-                reward_space=reward_space,  # selects the optimization target
-            )
-
+            elif reward_space == "External":
+                # external RS
+                self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+                    RUNCONFIG['compiler_env'],  # selects the compiler to use
+                    benchmark=bench,  # selects the program to compile
+                    observation_space=observation_space,  # selects the observation space
+                    #reward_space=reward_space,  # selects the optimization target
+                )
+            else:
+                # CompilerGym RS
+                self.env = compiler_gym.make(  # creates a new environment (same as gym.make)
+                    RUNCONFIG['compiler_env'],  # selects the compiler to use
+                    benchmark=bench,  # selects the program to compile
+                    observation_space=observation_space,  # selects the observation space
+                    reward_space=reward_space,  # selects the optimization target
+                )
+        else: # create with an existing env
+            self.env = env
         self.name = name
         self.env.reset()  # starts a new compilation session
 
@@ -72,7 +74,6 @@ class Experiment:
                                    tmpdir=tmpdir, name=fname + ".c", run_args = run_args, run_timeout_seconds=rts, extra_objects_list=extra_objects_list, extra_include_dirs=extra_include_dirs)
         self.env.reset(benchmark=b)
         return self.env
-
 
     def experimentReset(self):
         self.env.reset()
