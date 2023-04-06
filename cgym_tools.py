@@ -125,23 +125,23 @@ def test_cycle():
 
 
 def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_prog_name"], already_compiled_objs = list(), extra_include_dirs=list()):
+    """
+    test experiment with compound project contains of pre-compiled and source parts.
+    It demonstrates how to make custom benchmark and perform randomly picked steps with custom reward estimation
+    """
     ex = Experiment(
         bench=None,#bench_util.bench_uri_from_c_src(tmpdir+ "/" + fname + ".bc"),
         observation_space="ObjectTextSizeBytes",  # selects the observation space
         reward_space=RUNCONFIG['inital_reward_space'], #RewardMode.RUNTIMEPOINTESTIMATE,
     )
-    #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
-    #ex.env.reset(benchmark=b)
     ex.resetBenchmark(ex.env, runtime_observation_count=10, fname=fname,
                       extra_objects_list=already_compiled_objs,
                       extra_include_dirs=extra_include_dirs,
                       run_args=["10000", "10000"], rts=10)
-
     print("=====DUMP ACTIONS=====")
     print(ex.getActions())
     print("=====REWARDS TESTING=====")
 
-    episode_reward = 0.0
     print(ex.env.observation.spaces)
     prev_obs = None
     for i in range(1000):
@@ -152,7 +152,6 @@ def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_pro
                                         ex.env.observation.spaces["TextSizeBytes"],
                                         ex.env.observation.spaces["Runtime"],
                                         ex.env.observation.spaces["TextSizeOz"]])
-
         rwd = None if prev_obs == None else (prev_obs - np.mean(observation[2]))
         prev_obs = np.mean(observation[2])
         print("bytes:", observation[1], "Oz:", observation[3], "rt:", np.mean(observation[2]),
@@ -160,15 +159,11 @@ def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_pro
         if done:
             print("DONE!!!")
             break
-
-        #print(f"Step {i}, quality={episode_reward:.3%}")
     return
 
 
 if __name__ == '__main__':
     test_packages_integrity()
-    #print("Test 200 times Ir2Vec")
-    #test_cycle()
     print("====Dump action space====")
     test_experiment_onefile(fname="myapp",
                             already_compiled_objs=["/home/nefanov/prog_test/cgym/cot/ext.o"],
