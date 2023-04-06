@@ -132,7 +132,7 @@ def test_experiment_onefile(tmpdir=RUNCONFIG["tmpdir"], fname=RUNCONFIG["dfl_pro
     )
     #b = runnable_bench_onefile(ex.env, runtime_observation_count=10, tmpdir="/home/nefanov/compiler_experiments/cot_contrib", name = fname + ".c")
     #ex.env.reset(benchmark=b)
-    ex.resetBenchmark(ex.env, runtime_observation_count=10, fname="myapp",
+    ex.resetBenchmark(ex.env, runtime_observation_count=10, fname=fname,
                       extra_objects_list=already_compiled_objs,
                       extra_include_dirs=extra_include_dirs,
                       run_args=["10000", "10000"], rts=10)
@@ -170,5 +170,7 @@ if __name__ == '__main__':
     #print("Test 200 times Ir2Vec")
     #test_cycle()
     print("====Dump action space====")
-    test_experiment_onefile(already_compiled_objs=["/home/nefanov/prog_test/cgym/cot/ext.o"], extra_include_dirs=["/home/nefanov/prog_test/cgym/cot"])
+    test_experiment_onefile(fname="myapp",
+                            already_compiled_objs=["/home/nefanov/prog_test/cgym/cot/ext.o"],
+                            extra_include_dirs=["/home/nefanov/prog_test/cgym/cot"])
     sys.exit(0)
