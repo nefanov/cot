@@ -89,3 +89,9 @@ def remap_actions(awl):
     for i, item in enumerate(awl):
         d[item] = i
     return d
+
+
+def read_action_log_from_json(fn):
+    with open(fn, 'r') as f:
+        data = json.load(f)
+        return data
