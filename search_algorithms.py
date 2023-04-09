@@ -66,7 +66,7 @@ def max_subseq_from_start(seq: list, episode_reward=0.) -> list:
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
                          step_lim=10, pick_pass=pick_random_from_positive, patience=FLAGS['patience'],
-                         pick_pass_args='action_log'):
+                         pick_pass_args='action_log', dump_to_json_file=None):
     state = env.reset()
     results = list()
     pat = 0
@@ -96,6 +96,10 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
 
     print("====================================================")
     pprint.pprint(action_log)
+    if dump_to_json_file:
+        with open(dump_to_json_file, "w+") as results:
+            json.dump(action_log, results)
+
     # find the subsequence from start, which gives max size gain
     action_log = max_subseq_from_start(action_log, episode_reward=episode_size_gain)
     return {"action_log": action_log, "episode_reward": episode_reward, "episode_size_gain": episode_size_gain}

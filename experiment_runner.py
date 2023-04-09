@@ -1,3 +1,4 @@
+import os
 import sys
 
 from common import *
@@ -31,7 +32,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
     return env
 
 
-def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=None):
+def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=None, steps=15):
     call_evaluator = None
     if MODE == Runmode.AC_BASIC:
         pass
@@ -61,7 +62,9 @@ def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=Non
             seq_list_lens = []
             for i in range(FLAGS["search_iterations"]):
                 printRed("Iteration " +str(i))
-                seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator, step_lim=15))
+                json_f_n = "results"+ os.sep + str(os.getpid()) + "_" + benchmark.split('/')[-1] + "_" + str(i) + ".json"
+                seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator, step_lim=steps,
+                                                          dump_to_json_file=json_f_n))
             positive_res = [s for s in seq_list_lens if s["episode_reward"] >= 0.]
 
             print("Iteration", i, "statistics:")
@@ -98,9 +101,17 @@ def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=Non
 
 if __name__ == "__main__":
     benchmark = "cbench-v1/qsort" # default if not set
+    steps = 15
     try:
         if sys.argv[1] == "-cbench":
             benchmark = "cbench-v1/" + sys.argv[2]
     except:
         pass
-    main(Runmode.LEAST_FROM_POSITIVE_SAMPLES, actions=actions_oz_extra, benchmark=benchmark)
+    try:
+        if sys.argv[3] == "-steps":
+            steps = int(sys.argv[4])
+    except:
+        pass
+
+
+    main(Runmode.LEAST_FROM_POSITIVE_SAMPLES, actions=actions_oz_extra, benchmark=benchmark, steps=steps)
