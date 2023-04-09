@@ -5,6 +5,7 @@ import math
 import random
 import statistics
 import json
+import glob
 from collections import namedtuple, OrderedDict
 from typing import List
 import numpy as np
@@ -95,3 +96,7 @@ def read_action_log_from_json(fn):
     with open(fn, 'r') as f:
         data = json.load(f)
         return data
+
+
+def get_json_files_list(directory="results"):
+    return glob.glob(directory + r'/*.json')
