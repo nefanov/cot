@@ -9,6 +9,7 @@ Validate the sequences from 2 on each of the tests from benchmark.
 
 from common import *
 import glob
+import operator
 
 
 def read_statistics(files_list):
@@ -77,16 +78,90 @@ def get_best_from_statistics(files_list: list, subseq_mining_algo=get_non_neg_fr
 
     print("===========PREFERRED SEQUENCES=============")
     pprint.pprint(prefer_seq)
+    return prefer_seq
 
 
 def test1():
     print(read_action_log_from_json("results/28979_gsm_49.json"))
 
 
-def test2(l: list):
-    get_best_from_statistics(l)
+def sequential_slice(iterable, length):
+    pool = tuple(iterable)
+    assert 0 < length <= len(pool)
+    tails = (pool[s:] for s in range(length))
+    return zip(*tails)
+
+
+def sequence_in_list(sequence, lst):
+    pool = tuple(sequence)
+    return any((pool == s for s in sequential_slice(lst, len(pool))))
+
+
+def lcs(a, b):
+    if len(a) > len(b):
+        a, b = b, a
+    for l in reversed(range(1, len(a)+1)):
+        seq = [subseq for subseq in sequential_slice(a, l) if sequence_in_list(subseq, b)]
+        if seq:
+            break
+    return seq
+
+
+def static_validate_seq(item, l):
+    size = len(l)
+    for i in range(0, len(item['action_list']) - size + 1):
+        if item['action_list'][i: i + size] == l and item['sizes'][i] > item['sizes'][i + size-1]:
+            return True
+    return False
+
+
+def extract_subsequences(stat: list):
+    freq_voc = {}
+    for i, item_i in enumerate(stat):
+        iter = i / len(stat) * 100
+        if iter % 10 == 0 or i == len(stat) - 1:
+            print("Processing subsequences: ", iter, "% completed")
+        for item_j in stat:
+            l = lcs(item_i['action_list'], item_j['action_list'])
+            for subseq in l:
+                list_subseq = list(subseq)
+                if list_subseq == [] or len(list_subseq) == 1:
+                    continue
+                if static_validate_seq(item_j, list_subseq) and static_validate_seq(item_i, list_subseq):
+                    val = freq_voc.get(str(list_subseq), {'actions':list_subseq,'freq': 0})
+                    val['freq'] += 1
+                    freq_voc.update({str(list_subseq): val, })
+    return freq_voc
+
+
+def generate(subsequences: list):
+    result = []
+    return result
+
+
+def filter_seq(sorted_freq_list, freq=2, length=3 ):
+    res = []
+    for item in sorted_freq_list:
+        if len(item['actions']) >= length and item['freq'] >= freq:
+            res.append(item)
+    return res
+
+def gen_pipeline(l: list):
+    b_stat = get_best_from_statistics(l)
+    freq = extract_subsequences(b_stat)
+    #pprint.pprint(freq) # print as is
+    #print("-- sort by freq --")
+
+    sorted_freq_list = reversed(sorted([v for _,v in freq.items()], key=lambda d: d['freq']))
+    #pprint.pprint(sorted_freq_list)
+    res = filter_seq(sorted_freq_list, freq=10, length=4)
+    print("========FILTERED RESULTS==========")
+    for i, item in enumerate(res):
+        print(i,":", item)
+    #generated_seq = generate(subseq_storage)
+    return
 
 
 if __name__ == '__main__':
     test1()
-    test2(get_json_files_list("results"))
+    gen_pipeline(get_json_files_list("results"))
