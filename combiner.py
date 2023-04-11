@@ -8,6 +8,8 @@ Validate the sequences from 2 on each of the tests from benchmark.
 """
 
 from common import *
+from search_algorithms import subsequence_eval
+from experiment_runner import make_env
 import glob
 import operator
 
@@ -146,22 +148,64 @@ def filter_seq(sorted_freq_list, freq=2, length=3 ):
             res.append(item)
     return res
 
-def gen_pipeline(l: list):
-    b_stat = get_best_from_statistics(l)
-    freq = extract_subsequences(b_stat)
-    #pprint.pprint(freq) # print as is
-    #print("-- sort by freq --")
 
-    sorted_freq_list = reversed(sorted([v for _,v in freq.items()], key=lambda d: d['freq']))
-    #pprint.pprint(sorted_freq_list)
-    res = filter_seq(sorted_freq_list, freq=10, length=4)
+def validate_subseq(input_list, validation_list, eval_func=subsequence_eval):
+    valid_subsequences = dict()
+    for test in validation_list:
+        valid_subsequences[test] = []
+        benchmark = "cbench-v1/" + test
+        actions = actions_oz_extra
+        with make_env(actions_whitelist_names=actions, benchmark=benchmark) as env:
+            for subseq in input_list:
+                printLightPurple("Test " + test + ": subsequence" + str(subseq))
+                results = eval_func(env, subseq['actions'], reward_estimator=const_factor_threshold)
+                if results[0]['prev_size'] < results[-1]['size'] or results[0]['prev_runtime'] < results[-1]['runtime']:
+                    printRed("Test " + test + " : degrades on " + str(subseq['actions']))
+                else:
+                    print(results)
+                    valid_subsequences[test].append(results)
+
+    return valid_subsequences
+
+
+def gen_pipeline(l: list):
+    b_stat = get_best_from_statistics(l)[:200] # debug only
+    freq = extract_subsequences(b_stat)
+
+    sorted_freq_list = reversed(sorted([v for _, v in freq.items()], key=lambda d: d['freq']))
+    res = filter_seq(sorted_freq_list, freq=5, length=4)
     print("========FILTERED RESULTS==========")
     for i, item in enumerate(res):
-        print(i,":", item)
-    #generated_seq = generate(subseq_storage)
+        print(i, ":", item)
+    # validation
+    validation_list = [
+        "gsm",
+        "bzip2",
+        "stringsearch",
+        "tiff2bw",
+        "sha",
+        "qsort",
+        "patricia",
+        "crc32",
+    ]
+    valid_subseq = validate_subseq(res, validation_list)
+    print("==============VALIDATION=============")
+    print("Validation on tests:", validation_list)
+    print("--------------------------------------")
+    print("Sequences which are good on all of the tests:")
+    print("--------------------------------------")
+    all_good_seq = {}
+
+    for k, v in valid_subseq.items():
+        all_good_seq[k] = []
+        for estimation in v:
+            sequence = [e['action'] for e in estimation]
+            all_good_seq[k].append(sequence)
+    pprint.pprint(all_good_seq)
+
     return
 
 
 if __name__ == '__main__':
     test1()
-    gen_pipeline(get_json_files_list("results"))
+    gen_pipeline(get_json_files_list("results_2"))
