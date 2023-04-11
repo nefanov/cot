@@ -15,6 +15,33 @@ def single_pass_eval(env, reward_estimator=const_factor_threshold,
         print("Action", env.action_spaces[0].names[action], "R", reward, "; size:", prev_size, "->", state[1], "; runtime:", prev_runtime, "->", reward_if_list_func(state[2]))
 
 
+def subsequence_eval(env, subseq, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
+    state = env.reset()
+    results = []
+    for __name in subseq:
+        v = env.action_spaces[0].names.index(__name)
+        prev_size = state[1]
+        prev_runtime = reward_if_list_func(state[2])
+        state, r, d, _ = env.step(v)
+        reward = reward_estimator(env.hetero_os_baselines[0],
+                              state[1],
+                              reward_if_list_func(env.hetero_os_baselines[1]),
+                              reward_if_list_func(state[2]),
+                              prev_size,
+                              prev_runtime)
+
+        results.append({"action": env.action_spaces[0].names[v],
+                        "action_num": v,
+                        "reward": reward,
+                        "prev_size": prev_size, "size": state[1],
+                        "prev_runtime": prev_runtime, "runtime": reward_if_list_func(state[2]),
+                        "size gain %": (prev_size - state[1]) / prev_size * 100
+            })
+
+    return results
+
+
+
 def one_pass_perform(env, prev_state, action, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
     """
     one iteration of search: try all the passes, then return statistics
