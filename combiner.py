@@ -169,7 +169,7 @@ def validate_subseq(input_list, validation_list, eval_func=subsequence_eval):
 
 
 def gen_pipeline(l: list):
-    b_stat = get_best_from_statistics(l)[:200] # debug only
+    b_stat = get_best_from_statistics(l)[:100] # debug only
     freq = extract_subsequences(b_stat)
 
     sorted_freq_list = reversed(sorted([v for _, v in freq.items()], key=lambda d: d['freq']))
@@ -202,6 +202,18 @@ def gen_pipeline(l: list):
             sequence = [e['action'] for e in estimation]
             all_good_seq[k].append(sequence)
     pprint.pprint(all_good_seq)
+
+    congl = {}
+    for k,v in all_good_seq.items():
+        for l in v:
+            congl_value = congl.get(str(l), {'actions': [], 'test': [], 'freq': 0})
+            congl_value['actions'] = l
+            congl_value['test'].append(k)
+            congl_value['freq'] += 1
+            congl.update({str(l): congl_value})
+    print("Conglomerate freq-dict for the best results:")
+    for k,v in congl.items():
+        print(v['actions'],":", v['freq'], "- on tests:", v['test'])
 
     return
 
