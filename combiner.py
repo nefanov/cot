@@ -52,7 +52,7 @@ def get_non_neg_from_start(size_gains: list, rt_gains: list, start =0, patience_
     return (start, len(size_gains)-1)
 
 
-def get_best_from_statistics(files_list: list, subseq_mining_algo=get_non_neg_from_start)-> list:
+def get_best_from_statistics(files_list: list, subseq_mining_algo=get_non_neg_from_start) -> list:
     stat = read_statistics(files_list)
     prefer_seq = []
     for estimation in stat:
@@ -130,7 +130,7 @@ def extract_subsequences(stat: list):
                 if list_subseq == [] or len(list_subseq) == 1:
                     continue
                 if static_validate_seq(item_j, list_subseq) and static_validate_seq(item_i, list_subseq):
-                    val = freq_voc.get(str(list_subseq), {'actions':list_subseq,'freq': 0})
+                    val = freq_voc.get(str(list_subseq), {'actions': list_subseq, 'freq': 0})
                     val['freq'] += 1
                     freq_voc.update({str(list_subseq): val, })
     return freq_voc
@@ -169,7 +169,7 @@ def validate_subseq(input_list, validation_list, eval_func=subsequence_eval):
 
 
 def gen_pipeline(l: list):
-    b_stat = get_best_from_statistics(l)[:100] # debug only
+    b_stat = get_best_from_statistics(l) # debug only
     freq = extract_subsequences(b_stat)
 
     sorted_freq_list = reversed(sorted([v for _, v in freq.items()], key=lambda d: d['freq']))
@@ -212,9 +212,18 @@ def gen_pipeline(l: list):
             congl_value['freq'] += 1
             congl.update({str(l): congl_value})
     print("Conglomerate freq-dict for the best results:")
-    for k,v in congl.items():
-        print(v['actions'],":", v['freq'], "- on tests:", v['test'])
-
+    congl_list = []
+    congl_list = [v for k,v in congl.items()]
+    congl_list_chart = sorted(congl_list, key=lambda d: d['freq'])
+    for v in congl_list_chart:
+        print(v['actions'], ":", v['freq'], "- on tests:", v['test'])
+    with open("validation_results.json", "w") as final:
+        json.dump(congl_list, final)
+    keys = congl_list_chart[0].keys()
+    with open('validation_results.csv', 'w', newline='') as output_file:
+        dict_writer = csv.DictWriter(output_file, keys)
+        dict_writer.writeheader()
+        dict_writer.writerows(congl_list_chart)
     return
 
 
