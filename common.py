@@ -101,3 +101,75 @@ def read_action_log_from_json(fn):
 
 def get_json_files_list(directory="results"):
     return glob.glob(directory + r'/*.json')
+
+
+class HistoryObservation(gym.ObservationWrapper):
+    """
+    This wrapper implements very simple characterization space:
+    For the input representation (state), if there are N possible
+    actions, then an action x is represented by a one-hot vector V(x)
+    with N entries. A sequence of M actions (x, y, ...) is represented
+    by an MxN matrix of 1-hot vectors (V(x), V(y), ...). Actions that
+    have not been taken yet are represented as the zero vector. This
+    way the input does not have a variable size since each episode has
+    a fixed number of actions.
+
+    Also, it supports multi-observation set by the parameter "hetero_observations_names"
+    """
+
+    def __init__(self, env, hetero_observations_names=OrderedDict()):
+        super().__init__(env=env)
+        self.x = len(env.action_spaces[0].names)
+        self.y = len(env.action_spaces[0].names)
+        if len(FLAGS["actions_white_list"]) > 0:
+            self.x = len(FLAGS["actions_white_list"])
+            self.y = len(FLAGS["actions_white_list"])
+
+        self.observation_space = gym.spaces.Box(
+            low=np.full(self.x, 0, dtype=np.float32),
+            high=np.full(self.y, float("inf"), dtype=np.float32),
+            dtype=np.float32,
+        )
+        self.env = env
+        self.hetero_os = hetero_observations_names
+        self.hetero_os_baselines = list()
+
+    def reset(self, *args, **kwargs):
+        self._steps_taken = 0
+        self._state = np.zeros(
+            (FLAGS['episode_len'] - 1, self.x), dtype=np.int32
+        ) # drop history diagram
+        super().reset(*args, **kwargs) # drop the environment state
+        reset_state = [self._state] # add dropped history diagram as state_{0}
+        # add extra observation spaces
+        for k, _ in self.hetero_os.items():
+            obs = self.env.observation[k]
+            self.hetero_os_baselines.append(obs)
+            reset_state.append(obs) # append dropped {observation space}_i as state_{i},i \in 1..len
+            FLAGS["logger"].log("Reset: add baseline observation for " + str(k) + " : " + str(obs),
+                                mode=LogMode.VERBOSE)
+
+        return reset_state # should be specified by certain ObservationSpaces
+
+    def step(self, action: int):
+        assert self._steps_taken < FLAGS['episode_len']
+        if self._steps_taken < FLAGS['episode_len'] - 1:
+            # Don't need to record the last action since there are no
+            # further decisions to be made at that point, so that
+            # information need never be presented to the model.
+            try:
+                act = FLAGS["actions_filter_map"][action]
+            except:
+                act = action
+            self._state[self._steps_taken][act] = 1 # act is only for observation states update, real action is "action"
+        self._steps_taken += 1
+        observable_a = self._state #, _, _, _ = super().step(action) # or simply return observation space
+        # compose extra observations into the observation vector too
+        observation_spaces_list = [self.env.observation.spaces[k] for (k, _) in self.hetero_os.items()]
+        heterog_obs, b, c, d = self.env.step(action, observation_spaces=observation_spaces_list)
+        observation = [observable_a, heterog_obs[0], heterog_obs[1]]
+
+        return observation, b, c, d
+
+    def observation(self, observation):
+        return self._state

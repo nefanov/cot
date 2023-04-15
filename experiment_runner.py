@@ -2,7 +2,7 @@ import os
 import sys
 
 from common import *
-from actor_critic import HistoryObservation, TrainActorCritic
+from actor_critic import TrainActorCritic
 from search_algorithms import search_strategy_eval
 
 
