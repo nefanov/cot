@@ -29,7 +29,7 @@ def pick_least_from_positive(results: list, **kwargs) -> list:
 
 def pick_least_from_positive_samples(results: list, **kwargs) -> list:
     res = pick_all_positive_size_gain_rand_if_neg(results)
-    ns = 1
+    ns = 3
     try:
         ns = kwargs['num_samples']
     except:
