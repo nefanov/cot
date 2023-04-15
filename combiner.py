@@ -84,7 +84,7 @@ def get_best_from_statistics(files_list: list, subseq_mining_algo=get_non_neg_fr
 
 
 def test1():
-    print(read_action_log_from_json("results_oz/28979_gsm_49.json"))
+    print(read_action_log_from_json("results/28979_gsm_49.json"))
 
 
 def sequential_slice(iterable, length):
@@ -211,7 +211,7 @@ def gen_pipeline(l: list):
             congl_value['test'].append(k)
             congl_value['freq'] += 1
             congl.update({str(l): congl_value})
-    print("Conglomerate freq-dict for the best results_oz:")
+    print("Conglomerate freq-dict for the best results:")
     congl_list = []
     congl_list = [v for k,v in congl.items()]
     congl_list_chart = sorted(congl_list, key=lambda d: d['freq'])

@@ -100,7 +100,7 @@ def read_action_log_from_json(fn):
         return data
 
 
-def get_json_files_list(directory="results_oz"):
+def get_json_files_list(directory="results"):
     return glob.glob(directory + r'/*.json')
 
 
