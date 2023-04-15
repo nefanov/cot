@@ -6,12 +6,13 @@ import random
 import statistics
 import json
 import csv
+import sys
+import os
 import glob
+import pprint
 from collections import namedtuple, OrderedDict
 from typing import List
 import numpy as np
-import sys
-import pprint
 from enum import Enum
 
 #ml dependencies

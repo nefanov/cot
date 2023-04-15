@@ -1,18 +1,15 @@
-import os
-import sys
-
 from common import *
 from actor_critic import TrainActorCritic
 from search_algorithms import search_strategy_eval
 
 
-def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSizeOz", actions_whitelist_names=None):
+def make_env(extra_observation_spaces=None, benchmark=None, obj_baseline="TextSizeOz", actions_whitelist_names=None):
     if benchmark is None:
         benchmark = "cbench-v1/blowfish"
     env = compiler_gym.make(  # creates a partially-empty env
                 "llvm-v0",  # selects the compiler to use
                 benchmark=benchmark,  # selects the program to compile
-                observation_space=sz_baseline,  # initial observation
+                observation_space=obj_baseline,  # initial observation
                 reward_space=None,  # in future selects the optimization target
             )
 
@@ -24,7 +21,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
     baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
         o = OrderedDict()
-        o["TextSizeBytes"] = baseline_obs_init_val # this is only a baseline, and value is defaultly scalar -- chk type
+        o[obj_baseline] = baseline_obs_init_val # this is only a baseline, and value is defaultly scalar -- chk type
         o["Runtime"] = np.zeros(1)
     else:
         o = extra_observation_spaces
@@ -32,7 +29,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, sz_baseline="TextSiz
     return env
 
 
-def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=None, steps=15):
+def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=None, baseline='TextSizeOz', steps=15):
     call_evaluator = None
     if MODE == Runmode.AC_BASIC:
         pass
@@ -54,7 +51,7 @@ def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=Non
         print("Incorrect run mode")
         sys.exit(1)
 
-    with make_env(actions_whitelist_names=actions, benchmark=benchmark) as env:
+    with make_env(actions_whitelist_names=actions, benchmark=benchmark, obj_baseline=baseline) as env:
         if FLAGS['iterations'] == 1:
             TrainActorCritic(env, reward_estimator=const_factor_threshold)
             return
@@ -102,6 +99,7 @@ def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=Non
 if __name__ == "__main__":
     benchmark = "cbench-v1/qsort" # default if not set
     steps = 15
+    bl = "TextSizeOz"
     try:
         if sys.argv[1] == "-cbench":
             benchmark = "cbench-v1/" + sys.argv[2]
@@ -112,6 +110,11 @@ if __name__ == "__main__":
             steps = int(sys.argv[4])
     except:
         pass
+    try:
+        if sys.argv[5] == "-baseline":
+            bl = sys.argv[6]
 
+    except:
+        pass
 
-    main(Runmode.LEAST_FROM_POSITIVE_SAMPLES, actions=actions_oz_extra, benchmark=benchmark, steps=steps)
+    main(Runmode.LEAST_FROM_POSITIVE_SAMPLES, actions=actions_oz_extra, benchmark=benchmark, baseline=bl, steps=steps)
