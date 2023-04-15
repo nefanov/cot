@@ -41,7 +41,6 @@ def subsequence_eval(env, subseq, reward_estimator=const_factor_threshold, rewar
     return results
 
 
-
 def one_pass_perform(env, prev_state, action, reward_estimator=const_factor_threshold, reward_if_list_func=lambda a: np.mean(a)):
     """
     one iteration of search: try all the passes, then return statistics
