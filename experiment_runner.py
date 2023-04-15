@@ -21,7 +21,7 @@ def make_env(extra_observation_spaces=None, benchmark=None, obj_baseline="TextSi
     baseline_obs_init_val = env.reset()
     if not isinstance(extra_observation_spaces, OrderedDict):
         o = OrderedDict()
-        o[obj_baseline] = baseline_obs_init_val # this is only a baseline, and value is defaultly scalar -- chk type
+        o["TextSizeBytes"] = baseline_obs_init_val # this is only a baseline, and value is defaultly scalar -- chk type
         o["Runtime"] = np.zeros(1)
     else:
         o = extra_observation_spaces
@@ -59,7 +59,7 @@ def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=Non
             seq_list_lens = []
             for i in range(FLAGS["search_iterations"]):
                 printRed("Iteration " +str(i))
-                json_f_n = "results"+ os.sep + str(os.getpid()) + "_" + benchmark.split('/')[-1] + "_" + str(i) + ".json"
+                json_f_n = "results_oz"+ os.sep + str(os.getpid()) + "_" + benchmark.split('/')[-1] + "_" + str(i) + ".json"
                 seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator, step_lim=steps,
                                                           dump_to_json_file=json_f_n))
             positive_res = [s for s in seq_list_lens if s["episode_reward"] >= 0.]

@@ -70,5 +70,5 @@ def pick_random_from_positive_used(results: list, **kwargs) -> list:
             print("Pick candidate randomly")
             return [random.choice(results)]
     except Exception as e:
-        print(__name__, e, ": , just return random from whole results")
+        print(__name__, e, ": , just return random from whole results_oz")
         return [pick_random(res)]

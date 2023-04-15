@@ -100,7 +100,7 @@ def read_action_log_from_json(fn):
         return data
 
 
-def get_json_files_list(directory="results"):
+def get_json_files_list(directory="results_oz"):
     return glob.glob(directory + r'/*.json')
 
 
@@ -118,10 +118,11 @@ class HistoryObservation(gym.ObservationWrapper):
     Also, it supports multi-observation set by the parameter "hetero_observations_names"
     """
 
-    def __init__(self, env, hetero_observations_names=OrderedDict()):
+    def __init__(self, env, hetero_observations_=OrderedDict(), primary_metrics="TextSizeBytes"):
         super().__init__(env=env)
         self.x = len(env.action_spaces[0].names)
         self.y = len(env.action_spaces[0].names)
+        self.prim_metrics = primary_metrics
         if len(FLAGS["actions_white_list"]) > 0:
             self.x = len(FLAGS["actions_white_list"])
             self.y = len(FLAGS["actions_white_list"])
@@ -132,7 +133,7 @@ class HistoryObservation(gym.ObservationWrapper):
             dtype=np.float32,
         )
         self.env = env
-        self.hetero_os = hetero_observations_names
+        self.hetero_os = hetero_observations_
         self.hetero_os_baselines = list()
 
     def reset(self, *args, **kwargs):
@@ -143,8 +144,10 @@ class HistoryObservation(gym.ObservationWrapper):
         super().reset(*args, **kwargs) # drop the environment state
         reset_state = [self._state] # add dropped history diagram as state_{0}
         # add extra observation spaces
-        for k, _ in self.hetero_os.items():
+        for k, v in self.hetero_os.items():
             obs = self.env.observation[k]
+            if k == self.prim_metrics:
+                obs = v # primary metrics should be taken from the original observation space (from previous)
             self.hetero_os_baselines.append(obs)
             reset_state.append(obs) # append dropped {observation space}_i as state_{i},i \in 1..len
             FLAGS["logger"].log("Reset: add baseline observation for " + str(k) + " : " + str(obs),
