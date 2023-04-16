@@ -59,7 +59,7 @@ def main(MODE="single_pass_validate", actions=actions_oz_baseline, benchmark=Non
             seq_list_lens = []
             for i in range(FLAGS["search_iterations"]):
                 printRed("Iteration " +str(i))
-                json_f_n = "results"+ os.sep + str(os.getpid()) + "_" + benchmark.split('/')[-1] + "_" + str(i) + ".json"
+                json_f_n = FLAGS["statistics_output_dir"] + os.sep + str(os.getpid()) + "_" + benchmark.split('/')[-1] + "_" + str(i) + ".json"
                 seq_list_lens.append(search_strategy_eval(env, reward_estimator=const_factor_threshold, pick_pass=call_evaluator, step_lim=steps,
                                                           dump_to_json_file=json_f_n))
             positive_res = [s for s in seq_list_lens if s["episode_reward"] >= 0.]
@@ -113,8 +113,11 @@ if __name__ == "__main__":
     try:
         if sys.argv[5] == "-baseline":
             bl = sys.argv[6]
-
     except:
         pass
-
+    try:
+        if sys.argv[7] == "-o_dir":
+            FLAGS["statistics_output_dir"] = sys.argv[8]
+    except:
+        pass
     main(Runmode.LEAST_FROM_POSITIVE_SAMPLES, actions=actions_oz_extra, benchmark=benchmark, baseline=bl, steps=steps)
