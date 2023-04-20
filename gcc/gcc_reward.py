@@ -1,6 +1,7 @@
 from enum import Enum
 import numpy as np
 
+
 class GccRew(Enum):
     RUNTIME = "Runtime",
     TextSizeBytes = "TextSizeBytes"

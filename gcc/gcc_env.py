@@ -5,7 +5,7 @@ from gcc_reward import *
 
 from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
 
-FLAGS['tmpdir'] = "/home/nefanov/compiler_experiments/cot_contrib"
+FLAGS['tmpdir'] = os.getcwd()
 
 
 class gcc_benchmark:
@@ -18,6 +18,7 @@ class gcc_benchmark:
         self.outfile = list()
         self.timeout_seconds = None
         self.log_file_path = tmpdir + os.sep + "last_compile_log.txt"
+        self.last_compile_success = False
 
     def add_compile_cmd(self):
         pass
@@ -73,18 +74,24 @@ class gcc_benchmark:
                 fp.write(output)
                 print(output)
             if (results.returncode != 0):
+                printRed("Compile error on cmd: " + str(cmd))
+                self.last_compile_success = False
                 return 1, cmd
+        printGreen("Compile success.")
+        self.last_compile_success = True
         return 0, cmd
 
-    def run(self, pre_cmd=["time"], need_compile=True):
+    def run(self, pre_cmd=["time"], need_compile=False):
         if need_compile is True:
             compile_ret = self.compile()
             if compile_ret[0] != 0:
-                pass
-                printRed("Compile error on cmd: " + str(compile_ret[1]))
                 return 1
             else:
-                printGreen("Compile success.")
+               pass
+
+        if self.last_compile_success is False:
+            printRed("run() error: inconsistent build")
+            return 1, 0
 
         results = subprocess.run([" ".join(pre_cmd + self.run_cmd)], text=True, shell=True, capture_output=True)
         with open(self.log_file_path, 'w+') as fp:
@@ -155,7 +162,6 @@ class gcc_env:
 if __name__ == '__main__':
     gbm = gcc_benchmark()
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
-    #print(gbm.run(need_compile=False))
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics()])
     env.reset()
-    print(env.step(action="-ftree-vectorize"))
+    printLightPurple(str(env.step(action="-ftree-vectorize")))
