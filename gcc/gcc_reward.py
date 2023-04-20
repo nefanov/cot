@@ -20,22 +20,21 @@ class RewardMetrics:
 
 
 class RuntimeRewardMetrics(RewardMetrics):
-    def __init__(self, t="Runtime", value=0.0):
+    def __init__(self, t="Runtime", value=0.0, warmup_count=1, repeat_count=10, agg_func=np.mean):
         super().__init__(t, value)
+        self.kind = "Runtime"
+        self.warmup_count = warmup_count
+        self.repeat_count = repeat_count
+        self.agg_func = agg_func
 
     def evaluate(self, env):
         for i in range(self.warmup_count):
             env.benchmark.run()
         for i in range(self.repeat_count):
-            self.storage.append(env.benchmark.run())
+            self.storage.append(env.benchmark.run()[1])
         self.value = np.mean(self.storage)
         return self.value
 
-    def setup(self, warmup_count=1, repeat_count=10, agg_func=np.mean):
-        self.kind = "Runtime"
-        self.warmup_count = warmup_count
-        self.repeat_count = repeat_count
-        self.agg_func = agg_func
 
 
 class SizeRewardMetrics(RewardMetrics):
@@ -48,3 +47,4 @@ class SizeRewardMetrics(RewardMetrics):
 
     def setup(self, warmup_count=1, repeat_count=10, agg_func=np.mean):
         self.kind = "TextSizeBytes"
+
