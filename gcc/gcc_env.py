@@ -65,7 +65,8 @@ class gcc_benchmark:
 
 
     def compile(self, opt=None):
-        for cmd in self.compile_cmds:
+        for _cmd in self.compile_cmds:
+            cmd = _cmd[:]
             if opt:
                 cmd.append(" ".join(opt))
             results = subprocess.run([" ".join(cmd)], text=True, shell=True, capture_output=True)
@@ -137,11 +138,9 @@ class gcc_env:
         self.action_history.clear()
         pass
 
-
     def step(self, action):
         result = self.multistep([action])
         return result
-
 
     def multistep(self, actions:list, reward_func = lambda l, hdrs: np.mean(l)):
         state = None
