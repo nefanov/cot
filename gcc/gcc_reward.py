@@ -39,14 +39,25 @@ class RuntimeRewardMetrics(RewardMetrics):
         return self.value
 
 
-class SizeRewardMetrics(RewardMetrics):
-    def __init__(self, t="TextSizeBytes", value=0.0):
+class TextSizeBytesRewardMetrics(RewardMetrics):
+    def __init__(self, t="TextSizeBytes", value=0):
         super().__init__(t, value)
 
     def evaluate(self, env):
         self.value = env.benchmark.get_text_size()
         return self.value
 
-    def setup(self, warmup_count=1, repeat_count=10, agg_func=np.mean):
+    def setup(self):
         self.kind = "TextSizeBytes"
 
+
+class ObjSizeBytesRewardMetrics(RewardMetrics):
+    def __init__(self, t="TextSizeBytes", value=0):
+        super().__init__(t, value)
+
+    def evaluate(self, env):
+        self.value = env.benchmark.get_obj_size()
+        return self.value
+
+    def setup(self):
+        self.kind = "ObjSizeBytes"
