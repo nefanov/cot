@@ -37,7 +37,6 @@ class RuntimeRewardMetrics(RewardMetrics):
         return self.value
 
 
-
 class SizeRewardMetrics(RewardMetrics):
     def __init__(self, t="TextSizeBytes", value=0.0):
         super().__init__(t, value)

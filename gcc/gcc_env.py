@@ -132,7 +132,6 @@ class gcc_env:
 
         pass
 
-
     def reset(self):
         self.benchmark.compile()
         self.action_history.clear()
@@ -154,7 +153,8 @@ class gcc_env:
             reward_metrics.append(rw_meter.evaluate(env=self))
 
         reward = reward_func(reward_metrics, [r.kind for r in self.reward_spaces])
-        self.action_history + actions
+        self.action_history += actions
+        state = [None] + [r for r in reward_metrics]
         return state, reward, done, info
 
 
@@ -163,4 +163,5 @@ if __name__ == '__main__':
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics()])
     env.reset()
+    printLightPurple(str(env.step(action="-ftree-vectorize")))
     printLightPurple(str(env.step(action="-ftree-vectorize")))
