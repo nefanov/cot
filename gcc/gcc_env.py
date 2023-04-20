@@ -115,6 +115,29 @@ class gcc_benchmark:
             else:
                 return 0, 0.
 
+    def get_text_size(self) -> int:
+        """
+            return: size of .TEXT section of compiled elf in bytes
+        """
+        if self.last_compile_success is False:
+            printRed("run() error: inconsistent build")
+            return 0
+
+        results = subprocess.run([" ".join(['size', '-G', ]) + ' '+ self.outfile[0]], text=True, shell=True,
+                                 capture_output=True)
+        return int(list(filter(None,results.stdout.split('\n')[1].split('\t')[0].split(' ')))[0])
+
+    def get_obj_size(self) -> int:
+        """
+        return: size of compiled elf in bytes
+        """
+        if self.last_compile_success is False:
+            printRed("run() error: inconsistent build")
+            return 0
+
+        results = subprocess.run([" ".join(['du', '-sb', ]) + ' '+ self.outfile[0]], text=True, shell=True,
+                                 capture_output=True)
+        return int(results.stdout.split('\t')[0])
 
 class gcc_env:
     def __init__(self,  # creates a new environment (same as gym.make)
@@ -163,5 +186,4 @@ if __name__ == '__main__':
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics()])
     env.reset()
-    printLightPurple(str(env.step(action="-ftree-vectorize")))
     printLightPurple(str(env.step(action="-ftree-vectorize")))

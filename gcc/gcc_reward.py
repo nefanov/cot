@@ -5,7 +5,9 @@ import numpy as np
 class GccRew(Enum):
     RUNTIME = "Runtime",
     TextSizeBytes = "TextSizeBytes"
+    ObjSizeBytes = "ObjSizeBytes"
 
+# == classes for metrics which are used in reward calculations and also as observables for search algorithms ==
 
 class RewardMetrics:
     def __init__(self, t="Runtime", value=0.0):
