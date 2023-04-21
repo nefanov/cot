@@ -1,2 +1,1 @@
-1) Provide custom benchmarks for experiment_runner as it done in cgym_tools -- in progress
-2) provide 'include' for custom benchmarks
+1) Provide presets of benchmarks (as third-party) for GCC standalone
