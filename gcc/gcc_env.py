@@ -1,12 +1,18 @@
+import copy
 import os
+import pprint
 import re
 import subprocess
+import search_policies
 from gcc_reward import *
 from rewards import const_factor_threshold
+from action_spaces_presets import load_as_from_file
+
 
 from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
 
 FLAGS['tmpdir'] = os.getcwd()
+FLAGS["reverse_actions_filter_map"] = {f:f for f in load_as_from_file("gcc_O2.txt")}
 
 
 class gcc_benchmark:
@@ -20,6 +26,12 @@ class gcc_benchmark:
         self.timeout_seconds = None
         self.log_file_path = tmpdir + os.sep + "last_compile_log.txt"
         self.last_compile_success = False
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
 
     def add_compile_cmd(self):
         pass
@@ -64,7 +76,6 @@ class gcc_benchmark:
             self.run_cmd.argument.extend(
                 ["qemu-aarch64 -L " + sys_settings['target_libs_dir'] + " ./" + output_bin] + run_args)
 
-
     def compile(self, opt=None):
         for _cmd in self.compile_cmds:
             cmd = _cmd[:]
@@ -74,12 +85,13 @@ class gcc_benchmark:
             with open(self.log_file_path, 'w+') as fp:
                 output = "Building by cmd: " + str(cmd) + ":\n" + "STDOUT: " + str(results.stdout) + "\nSTDERR: " + str(results.stderr)
                 fp.write(output)
-                print(output)
+                #print(output)
             if (results.returncode != 0):
                 printRed("Compile error on cmd: " + str(cmd))
                 self.last_compile_success = False
+                print(output)
                 return 1, cmd
-        printGreen("Compile success.")
+        #printGreen("Compile success.")
         self.last_compile_success = True
         return 0, cmd
 
@@ -101,13 +113,13 @@ class gcc_benchmark:
                 results.stdout) + "\nSTDERR: " + str(
                 results.stderr)
             fp.write(output)
-            print(output)
+            #print(output)
 
         if results.returncode != 0:
             printRed("Run failed.")
             return 1, 0.
         else:
-            printGreen("Run success.")
+            #printGreen("Run success.")
             out = results.stdout
             if "time" in pre_cmd:
                 rt = re.findall(r'[0-9]+.[0-9]+elapsed', results.stderr)
@@ -140,23 +152,32 @@ class gcc_benchmark:
                                  capture_output=True)
         return int(results.stdout.split('\t')[0])
 
+
 class gcc_env:
     def __init__(self,  # creates a new environment (same as gym.make)
-        config = dict(),  # selects the compiler to use
+        config=dict(),  # selects the compiler to use
         benchmark=gcc_benchmark(),  # selects the program to compile
         observation_space=None,  # selects the observation space
         reward_spaces=[],  # selects the optimization target
-        action_space=list()):
+        action_space=list(FLAGS["reverse_actions_filter_map"].keys())
+                ):
         self.action_history = list()
         self.action_space = action_space
         self.benchmark = benchmark
         self.observation_space=observation_space
         self.config=config
         self.reward_spaces = reward_spaces
+        printGreen("Creating new gcc environment")
+        pass
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
         pass
 
     def reset(self):
+        printGreen("Resetting gcc environment...")
         self.benchmark.compile()
         self.action_history.clear()
         reward_metrics = list()
@@ -164,7 +185,6 @@ class gcc_env:
             reward_metrics.append(rw_meter.evaluate(env=self))
         self.state = [None] + reward_metrics
         return self.state
-
 
     def step(self, action):
         result = self.multistep([action])
@@ -190,7 +210,13 @@ class gcc_env:
                 measured_n=l[hdrs.index("Runtime")]
             )
 
-    def multistep(self, actions:list, reward_func = reward_adapter):
+    def multistep(self, actions: list, reward_func=reward_adapter):
+        state, reward, done, info = self.probe(actions, reward_func)
+        self.action_history += actions
+        self.state = state
+        return state, reward, done, info
+
+    def probe(self, actions: list, reward_func=reward_adapter):
         prev_state = self.state
         done = False
         info = None
@@ -200,16 +226,55 @@ class gcc_env:
         reward_metrics = list()
         for rw_meter in self.reward_spaces:
             reward_metrics.append(rw_meter.evaluate(env=self))
-
         reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
-        self.action_history += actions
         state = [None] + [r for r in reward_metrics]
         return state, reward, done, info
 
 
+# ========================  stuff for simplified search algorithms =================================
+def check_each_action(env: gcc_env, reward_if_list_func=np.mean):
+    passes_results = []
+    prev_state = env.state
+    prev_size = prev_state[2]
+    prev_runtime = reward_if_list_func(prev_state[1])
+    for idx, action in enumerate(env.action_space):
+        printYellow("Probe " + action)
+        state, r, d, i = env.probe([action])
+        passes_results.append( {"action": action,
+                    "action_num": idx,
+                    "reward": r,
+                    "prev_size": prev_size,
+                    "size": state[2],
+                    "prev_runtime": prev_runtime,
+                    "runtime": reward_if_list_func(state[1]),
+                    "size gain %": (prev_size - state[2]) / prev_size * 100
+                } )
+        printYellow(env.action_history)
+    return passes_results
+
+
+def search_episode(env: gcc_env, heuristics="least_from_positive_sampling", steps=FLAGS["episode_len"]):
+    episode_reward = 0.0
+    episode_size_gain = 0.0
+    for i in range(steps):
+        results = check_each_action(env)
+        if heuristics == "least_from_positive_sampling":
+            positive = search_policies.pick_least_from_positive_samples(results)
+        state, reward, done, info = env.step(positive[0]['action'])
+
+    return positive
+
+
+    # ===================================================================================================
 if __name__ == '__main__':
     gbm = gcc_benchmark()
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
-    env.reset()
-    printLightPurple(str(env.step(action="-ftree-vectorize")))
+    state = env.reset()
+    printLightPurple(str(env.step(action="-O2")))
+    from experiment_runner import search_strategy_eval
+    print(search_strategy_eval(env,
+                         reward_estimator=const_factor_threshold,
+                         pick_pass=search_policies.pick_least_from_positive_samples,
+                         dump_to_json_file="results" + os.sep + "gcc_" + str(os.getpid()) + "_"  + "_" +
+                         str(1) + ".json", mode='gcc', examiner=check_each_action))
