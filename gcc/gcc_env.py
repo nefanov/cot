@@ -272,10 +272,14 @@ if __name__ == '__main__':
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
+    seq_list = []
     printLightPurple(str(env.step(action="-O2")))
-    
-    print(search_strategy_eval(env,
-                         reward_estimator=const_factor_threshold,
-                         pick_pass=search_policies.pick_least_from_positive_samples,
-                         dump_to_json_file="results" + os.sep + "gcc_" + str(os.getpid()) + "_"  + "_" +
-                         str(1) + ".json", mode='gcc', examiner=check_each_action))
+    for i in range(FLAGS["search_iterations"]):
+        printRed("Iteration " + str(i))
+        seq_list.append(search_strategy_eval(env,
+             reward_estimator=const_factor_threshold,
+             pick_pass=search_policies.pick_least_from_positive_samples,
+             dump_to_json_file="results" + os.sep + "gcc_" + str(os.getpid()) + "_"  + "_" + str(i) + ".json",
+             mode='gcc', examiner=check_each_action))
+    positive_res = [s for s in seq_list if s["episode_reward"] >= 0.]
+
