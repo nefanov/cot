@@ -1,3 +1,5 @@
+import re
+
 actions_oz_baseline = [
         "-break-crit-edges",
         "-early-cse-memssa",
@@ -54,3 +56,9 @@ actions_oz_extra = [
         "-sroa",
         "-sccp",
     ]
+
+
+def load_as_from_file(fn: str)-> list:
+        with open(fn,'r') as f:
+                data = f.read()
+                return re.split('; |, |\*|\n', data)

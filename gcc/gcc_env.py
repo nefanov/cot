@@ -119,6 +119,7 @@ class gcc_benchmark:
 
         if results.returncode != 0:
             printRed("Run failed.")
+            print(output)
             return 1, 0.
         else:
             #printGreen("Run success.")
@@ -240,7 +241,6 @@ def check_each_action(env: gcc_env, reward_if_list_func=np.mean):
     prev_size = prev_state[2]
     prev_runtime = reward_if_list_func(prev_state[1])
     for idx, action in enumerate(env.action_space):
-        printYellow("Probe " + action)
         state, r, d, i = env.probe([action])
         passes_results.append( {"action": action,
                     "action_num": idx,
@@ -251,7 +251,6 @@ def check_each_action(env: gcc_env, reward_if_list_func=np.mean):
                     "runtime": reward_if_list_func(state[1]),
                     "size gain %": (prev_size - state[2]) / prev_size * 100
                 } )
-        printYellow(env.action_history)
     return passes_results
 
 

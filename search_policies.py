@@ -29,12 +29,12 @@ def pick_least_from_positive(results: list, **kwargs) -> list:
 
 def pick_least_from_positive_samples(results: list, **kwargs) -> list:
     res = pick_all_positive_size_gain_rand_if_neg(results)
-    ns = 3
+    ns = 1
     try:
         ns = kwargs['num_samples']
     except:
         pass
-    return [min([random.choice(res) for i in range(ns)])]
+    return [min([random.choice(res) for i in range(ns)], key=lambda d: d['size gain %'])]
 
 
 def pick_greatest_from_positive_samples(results: list, **kwargs) -> list:
@@ -44,7 +44,7 @@ def pick_greatest_from_positive_samples(results: list, **kwargs) -> list:
         ns = kwargs['num_samples']
     except Exception as e:
         pass
-    return [max([random.choice(res) for i in range(ns)])]
+    return [max([random.choice(res) for i in range(ns)], key=lambda d: d['size gain %'])]
 
 
 def pick_random_from_positive(results: list, **kwargs) -> list:
