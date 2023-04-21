@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 from gcc_reward import *
+from rewards import const_factor_threshold
 
 from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
 
@@ -158,14 +159,39 @@ class gcc_env:
     def reset(self):
         self.benchmark.compile()
         self.action_history.clear()
-        pass
+        reward_metrics = list()
+        for rw_meter in self.reward_spaces:
+            reward_metrics.append(rw_meter.evaluate(env=self))
+        self.state = [None] + reward_metrics
+        return self.state
+
 
     def step(self, action):
         result = self.multistep([action])
         return result
 
-    def multistep(self, actions:list, reward_func = lambda l, hdrs: np.mean(l)):
-        state = None
+    def reward_adapter(l: list, prev: list, hdrs: list, mode="const_runtime_min_text_sz_def_thr"):
+        if len(prev) != len(l):
+            print("reward metrics can't be matched")
+            return -1
+        if mode == "const_runtime_min_text_sz_def_thr":
+            sz_name = "TextSizeBytes"
+        elif mode == "const_runtime_min_obj_sz_def_thr":
+            sz_name = "ObjSizeBytes"
+        else:
+            print("unexpected reward mode")
+            return -1
+        return const_factor_threshold(
+                baseline_m=prev[hdrs.index(sz_name)],
+                baseline_n=prev[hdrs.index("Runtime")],
+                prev_m=prev[hdrs.index(sz_name)],
+                prev_n=prev[hdrs.index("Runtime")],
+                measured_m=l[hdrs.index(sz_name)],
+                measured_n=l[hdrs.index("Runtime")]
+            )
+
+    def multistep(self, actions:list, reward_func = reward_adapter):
+        prev_state = self.state
         done = False
         info = None
 
@@ -175,7 +201,7 @@ class gcc_env:
         for rw_meter in self.reward_spaces:
             reward_metrics.append(rw_meter.evaluate(env=self))
 
-        reward = reward_func(reward_metrics, [r.kind for r in self.reward_spaces])
+        reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
         self.action_history += actions
         state = [None] + [r for r in reward_metrics]
         return state, reward, done, info
@@ -184,6 +210,6 @@ class gcc_env:
 if __name__ == '__main__':
     gbm = gcc_benchmark()
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
-    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics()])
+    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     env.reset()
     printLightPurple(str(env.step(action="-ftree-vectorize")))
