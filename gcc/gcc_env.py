@@ -8,8 +8,10 @@ from gcc_reward import *
 from rewards import const_factor_threshold
 from action_spaces_presets import load_as_from_file
 
-
 from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
+
+# dependencies from modules which are depended from CompilerGym: should be redesigned:
+from experiment_runner import search_strategy_eval
 
 FLAGS['tmpdir'] = os.getcwd()
 FLAGS["reverse_actions_filter_map"] = {f:f for f in load_as_from_file("gcc_O2.txt")}
@@ -272,7 +274,7 @@ if __name__ == '__main__':
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     printLightPurple(str(env.step(action="-O2")))
-    from experiment_runner import search_strategy_eval
+    
     print(search_strategy_eval(env,
                          reward_estimator=const_factor_threshold,
                          pick_pass=search_policies.pick_least_from_positive_samples,
