@@ -92,7 +92,7 @@ def max_subseq_from_start(seq: list, episode_reward=0.) -> list:
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
                          step_lim=10, pick_pass=pick_random_from_positive, patience=FLAGS['patience'],
-                         pick_pass_args='action_log', dump_to_json_file=None):
+                         pick_pass_args='action_log', dump_to_json_file=None, mode="llvm", examiner=examine_each_action):
     state = env.reset()
     results = list()
     pat = 0
@@ -100,13 +100,20 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
     episode_reward = 0.0
     episode_size_gain = 0.0
     for i in range(step_lim):
-        printLightPurple("step "+ str(i))
-        results = examine_each_action(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
+        printLightPurple("step " + str(i))
+        if mode == 'llvm':
+            results = examiner(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
+        elif mode == 'gcc':
+            results = examiner(env, reward_if_list_func=reward_if_list_func)
         param = {}
         if pick_pass_args == 'action_log':
             param.update({pick_pass_args: [a['action_num'] for a in action_log]}) # some strategies uses previous actions log | etc
         best = pick_pass(results, **param)[-1]
-        state, reward, d, _ = env.step(best["action_num"])  # apply. state and reward updates
+        if mode == 'llvm':
+            step = best["action_num"]
+        elif mode == 'gcc':
+            step = best['action']
+        state, reward, d, _ = env.step(best["action"])  # apply. state and reward updates
         action_log.append(best)
         try:
             episode_reward += reward
@@ -129,3 +136,4 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
     # find the subsequence from start, which gives max size gain
     action_log = max_subseq_from_start(action_log, episode_reward=episode_size_gain)
     return {"action_log": action_log, "episode_reward": episode_reward, "episode_size_gain": episode_size_gain}
+
