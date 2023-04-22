@@ -36,6 +36,7 @@ class gcc_benchmark:
         self.log_file_path = tmpdir + os.sep + "last_compile_log.txt"
         self.last_compile_success = False
         self.build_mode = build_mode
+        self.opt_env_var_name = "OPT"
 
     def __enter__(self):
         pass
@@ -59,12 +60,12 @@ class gcc_benchmark:
         if self.build_mode == Buildmode.DRIVER:
             compiler = sys_settings.get('compiler', "gcc")
         elif self.build_mode == Buildmode.MAKE:
-            compiler = "make"
+            compiler = "make -C"
         output_bin = sys_settings.get('output_bin', "a.out")
         sys_lib_flags = sys_settings.get('sys_lib_flags', [])
         extra_obj = extra_objects_list if extra_objects_list else list()
         extra_compiler_flags = sys_settings.get('extra_compiler_flags', [])
-
+        self.opt_env_var_name = sys_settings.get('opt_var_name', 'OPT')
         self.tmpdir = tmpdir
 
         if 'arch_triplet' in sys_settings.keys():
@@ -85,9 +86,10 @@ class gcc_benchmark:
             try:
                 self.filepaths.append(names[0]) # expect root target as a name
             except:
-                self.filepaths.append("all")
+                self.filepaths.append(tmpdir + " all")
+            env_vars = sys_settings.get('env_vars', {})
             self.compile_cmds.append(
-                [compiler] + [self.filepaths[-1]]
+                [compiler] + [tmpdir + " " + self.filepaths[-1] + " ".join([k+"="+v for k,v in env_vars.items()])]
             )
         self.outfile.extend([output_bin]) # by default, there are only one running artifact
         self.timeout_seconds = run_timeout_seconds
@@ -100,8 +102,15 @@ class gcc_benchmark:
     def compile(self, opt=None):
         for _cmd in self.compile_cmds:
             cmd = _cmd[:]
+
             if opt:
-                cmd.append(" ".join(opt))
+                if self.build_mode == Buildmode.MAKE:
+                    if len(opt) > 1 and not opt[0].startswith('\''):
+                        opt[0] = '\'' + opt[0]
+                        opt[-1] = opt[-1] + '\''
+                    cmd.append(self.opt_env_var_name+"="+" ".join(opt))
+                elif self.build_mode == Buildmode.DRIVER:
+                    cmd.append(" ".join(opt))
             results = subprocess.run([" ".join(cmd)], text=True, shell=True, capture_output=True)
             with open(self.log_file_path, 'w+') as fp:
                 output = "Building by cmd: " + str(cmd) + ":\n" + "STDOUT: " + str(results.stdout) + "\nSTDERR: " + str(results.stderr)
@@ -283,12 +292,18 @@ def search_episode(env: gcc_env, heuristics="least_from_positive_sampling", step
         state, reward, done, info = env.step(positive[0]['action'])
 
     return positive
-
+    # ========================
+    def test_gnumake():
+        gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
+        gbm.make_benchmark(tmpdir="../cgym/CompilerGym/compiler_gym/third_party/cbench/1",
+                        names=["all"])
+        env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
+        state = env.reset()
 
     # ===================================================================================================
 if __name__ == '__main__':
-    gbm = gcc_benchmark()
-    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'])
+    gbm = gcc_benchmark(build_mode=Buildmode.DRIVER)
+    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     seq_list = []
