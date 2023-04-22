@@ -4,6 +4,7 @@ import pprint
 import re
 import subprocess
 import search_policies
+from enum import Enum
 from gcc_reward import *
 from rewards import const_factor_threshold
 from action_spaces_presets import load_as_from_file
@@ -17,8 +18,14 @@ FLAGS['tmpdir'] = os.getcwd()
 FLAGS["reverse_actions_filter_map"] = {f:f for f in load_as_from_file("gcc_O2.txt")}
 
 
+class Buildmode(Enum):
+    DRIVER="driver"
+    MAKE="make"
+    CMAKE="cmake"
+
+
 class gcc_benchmark:
-    def __init__(self, from_dict={}, tmpdir=FLAGS['tmpdir']):
+    def __init__(self, from_dict={}, tmpdir=FLAGS['tmpdir'], build_mode=Buildmode.DRIVER):
         self.content = from_dict
         self.compile_cmds = list()
         self.pre_compile_cmds = list()
@@ -28,6 +35,7 @@ class gcc_benchmark:
         self.timeout_seconds = None
         self.log_file_path = tmpdir + os.sep + "last_compile_log.txt"
         self.last_compile_success = False
+        self.build_mode = build_mode
 
     def __enter__(self):
         pass
@@ -48,7 +56,10 @@ class gcc_benchmark:
                     sys_settings=dict(),
                        ):
         arch = "native"
-        compiler = sys_settings.get('compiler', "gcc")
+        if self.build_mode == Buildmode.DRIVER:
+            compiler = sys_settings.get('compiler', "gcc")
+        elif self.build_mode == Buildmode.MAKE:
+            compiler = "make"
         output_bin = sys_settings.get('output_bin', "a.out")
         sys_lib_flags = sys_settings.get('sys_lib_flags', [])
         extra_obj = extra_objects_list if extra_objects_list else list()
@@ -64,11 +75,19 @@ class gcc_benchmark:
             for item in extra_include_dirs:
                 sys_lib_flags.append('-isystem')
                 sys_lib_flags.append(item)
-
-        for name in names: # name is relative path to TU from the tmp dir
-            self.filepaths.append([tmpdir + os.sep + nm for nm in name.split(" ")])
+        if self.build_mode == Buildmode.DRIVER:
+            for name in names: # name is relative path to TU from the tmp dir
+                self.filepaths.append([tmpdir + os.sep + nm for nm in name.split(" ")])
+                self.compile_cmds.append(
+                    [compiler] + [" ".join(self.filepaths[-1])] + extra_obj + sys_lib_flags + extra_compiler_flags
+                )
+        elif self.build_mode == Buildmode.MAKE:
+            try:
+                self.filepaths.append(names[0]) # expect root target as a name
+            except:
+                self.filepaths.append("all")
             self.compile_cmds.append(
-                [compiler] + [" ".join(self.filepaths[-1])] + extra_obj + sys_lib_flags + extra_compiler_flags
+                [compiler] + [self.filepaths[-1]]
             )
         self.outfile.extend([output_bin]) # by default, there are only one running artifact
         self.timeout_seconds = run_timeout_seconds
@@ -273,7 +292,7 @@ if __name__ == '__main__':
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     seq_list = []
-    printLightPurple(str(env.step(action="-O2")))
+    #printLightPurple(str(env.step(action="-O2")))
     for i in range(FLAGS["search_iterations"]):
         printRed("Iteration " + str(i))
         seq_list.append(search_strategy_eval(env,
