@@ -50,18 +50,15 @@ class gcc_benchmark:
     def add_run_cmd(self):
         pass
 
-    def make_benchmark(self, tmpdir, names=["program.c"], run_args=list(),
-                    run_timeout_seconds=10,
-                    extra_objects_list=None,
-                    extra_include_dirs=None,
-                    sys_settings=dict(),
+    def make_benchmark(self, tmpdir, names=["program.c"], run_args=list(), run_timeout_seconds=10,
+                        extra_objects_list=None, extra_include_dirs=None, sys_settings=dict(),
                        ):
         arch = "native"
         if self.build_mode == Buildmode.DRIVER:
             compiler = sys_settings.get('compiler', "gcc")
         elif self.build_mode == Buildmode.MAKE:
             compiler = "make -C"
-        output_bin = sys_settings.get('output_bin', "a.out")
+        output_run_artifact = sys_settings.get('output_bin', "a.out")
         sys_lib_flags = sys_settings.get('sys_lib_flags', [])
         extra_obj = extra_objects_list if extra_objects_list else list()
         extra_compiler_flags = sys_settings.get('extra_compiler_flags', [])
@@ -91,13 +88,15 @@ class gcc_benchmark:
             self.compile_cmds.append(
                 [compiler] + [tmpdir + " " + self.filepaths[-1] + " ".join([k+"="+v for k,v in env_vars.items()])]
             )
-        self.outfile.extend([output_bin]) # by default, there are only one running artifact
+        if output_run_artifact != "a.out":
+            self.outfile.append(self.tmpdir + os.sep + "a.out")
+        self.outfile.extend([output_run_artifact]) # by default, there are only one running artifact
         self.timeout_seconds = run_timeout_seconds
         if arch == "native":
-            self.run_cmd.extend(["./" + output_bin] + run_args)
+            self.run_cmd.extend(["./" + self.outfile[-1]] + run_args)
         elif arch == "qemu-aarch64":
             self.run_cmd.argument.extend(
-                ["qemu-aarch64 -L " + sys_settings['target_libs_dir'] + " ./" + output_bin] + run_args)
+                ["qemu-aarch64 -L " + sys_settings['target_libs_dir'] + " ./" + output_run_artifact] + run_args)
 
     def compile(self, opt=None):
         for _cmd in self.compile_cmds:
@@ -105,7 +104,7 @@ class gcc_benchmark:
 
             if opt:
                 if self.build_mode == Buildmode.MAKE:
-                    if len(opt) > 1 and not opt[0].startswith('\''):
+                    if not opt[0].startswith('\''):
                         opt[0] = '\'' + opt[0]
                         opt[-1] = opt[-1] + '\''
                     cmd.append(self.opt_env_var_name+"="+" ".join(opt))
@@ -122,6 +121,7 @@ class gcc_benchmark:
                 print(output)
                 return 1, cmd
         #printGreen("Compile success.")
+        #printYellow(output)
         self.last_compile_success = True
         return 0, cmd
 
@@ -137,7 +137,8 @@ class gcc_benchmark:
             printRed("run() error: inconsistent build")
             return 1, 0
 
-        results = subprocess.run([" ".join(pre_cmd + self.run_cmd)], text=True, shell=True, capture_output=True)
+        results = subprocess.run([" ".join(pre_cmd + self.run_cmd)], text=True, shell=True, capture_output=True,
+                                 cwd=self.tmpdir)
         with open(self.log_file_path, 'w+') as fp:
             output = "Run by cmd: " + str(pre_cmd + self.run_cmd) + ":\n" + "STDOUT: " + str(
                 results.stdout) + "\nSTDERR: " + str(
@@ -152,6 +153,8 @@ class gcc_benchmark:
         else:
             #printGreen("Run success.")
             out = results.stdout
+            #printGreen(out)
+            #print("stderr", results.stderr)
             if "time" in pre_cmd:
                 rt = re.findall(r'[0-9]+.[0-9]+elapsed', results.stderr)
                 return 0, float((lambda text, suffix:
@@ -259,6 +262,7 @@ class gcc_env:
             reward_metrics.append(rw_meter.evaluate(env=self))
         reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
         state = [None] + [r for r in reward_metrics]
+        print("Probe state:", state, reward, "on", actions)
         return state, reward, done, info
 
 
@@ -295,19 +299,21 @@ def search_episode(env: gcc_env, heuristics="least_from_positive_sampling", step
     # ========================
 def test_gnumake():
     gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
-    gbm.make_benchmark(tmpdir="../cgym/CompilerGym/compiler_gym/third_party/cbench/1",
-                    names=["all"], run_args="1", sys_settings={'output_bin':"__run"})
+    gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/bzip2d/src",
+                    names=[""], run_args=["1"], sys_settings={'output_bin':"__run", 'opt_var_name': "CCC_OPTS"})
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     return env
 
-    def test_makebydriver():
-        gbm = gcc_benchmark(build_mode=Buildmode.DRIVER)
-        gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
-        env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
-        state = env.reset()
-        return env
+
+def test_makebydriver():
+    gbm = gcc_benchmark(build_mode=Buildmode.DRIVER)
+    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
+    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
+    state = env.reset()
+    return env
     # ===================================================================================================
+
 if __name__ == '__main__':
     env = test_gnumake()
     seq_list = []
