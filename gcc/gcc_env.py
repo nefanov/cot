@@ -293,19 +293,23 @@ def search_episode(env: gcc_env, heuristics="least_from_positive_sampling", step
 
     return positive
     # ========================
-    def test_gnumake():
-        gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
-        gbm.make_benchmark(tmpdir="../cgym/CompilerGym/compiler_gym/third_party/cbench/1",
-                        names=["all"])
-        env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
-        state = env.reset()
-
-    # ===================================================================================================
-if __name__ == '__main__':
-    gbm = gcc_benchmark(build_mode=Buildmode.DRIVER)
-    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
+def test_gnumake():
+    gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
+    gbm.make_benchmark(tmpdir="../cgym/CompilerGym/compiler_gym/third_party/cbench/1",
+                    names=["all"], run_args="1", sys_settings={'output_bin':"__run"})
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
+    return env
+
+    def test_makebydriver():
+        gbm = gcc_benchmark(build_mode=Buildmode.DRIVER)
+        gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
+        env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
+        state = env.reset()
+        return env
+    # ===================================================================================================
+if __name__ == '__main__':
+    env = test_gnumake()
     seq_list = []
     #printLightPurple(str(env.step(action="-O2")))
     for i in range(FLAGS["search_iterations"]):
@@ -313,7 +317,7 @@ if __name__ == '__main__':
         seq_list.append(search_strategy_eval(env,
              reward_estimator=const_factor_threshold,
              pick_pass=search_policies.pick_least_from_positive_samples,
-             dump_to_json_file="results" + os.sep + "gcc_" + str(os.getpid()) + "_"  + "_" + str(i) + ".json",
+             dump_to_json_file="results" + os.sep + "test_" + str(os.getpid()) + "_"  + "_" + str(i) + ".json",
              mode='gcc', examiner=check_each_action))
     positive_res = [s for s in seq_list if s["episode_reward"] >= 0.]
 
