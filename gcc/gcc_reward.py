@@ -23,7 +23,7 @@ class RewardMetrics:
 
 
 class RuntimeRewardMetrics(RewardMetrics):
-    def __init__(self, t="Runtime", value=0.0, warmup_count=1, repeat_count=10, agg_func=np.mean):
+    def __init__(self, t="Runtime", value=0.0, warmup_count=1, repeat_count=3, agg_func=np.mean):
         super().__init__(t, value)
         self.kind = "Runtime"
         self.warmup_count = warmup_count

@@ -301,6 +301,21 @@ def test_gnumake():
     gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
     gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/bzip2d/src",
                     names=[""], run_args=["1"], sys_settings={'output_bin':"__run", 'opt_var_name': "CCC_OPTS"})
+    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), ObjSizeBytesRewardMetrics()])
+    state = env.reset()
+    return env
+
+
+def cbench_env(name, mode="default", settings=None):
+    gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
+    placement = "third_party/cbench/cBench_V1.1/bzip2d/src"
+    if name == "bzip2d":
+        placement = "third_party/cbench/cBench_V1.1/bzip2d/src"
+    if name in ["gsm", "telecom_gsm"]:
+        placement = "third_party/cbench/cBench_V1.1/telecom_gsm/src"
+
+    gbm.make_benchmark(tmpdir=placement,
+                       names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS"})
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     return env
