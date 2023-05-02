@@ -1,1 +1,2 @@
-1) Provide explicit pipeline as clang -c -emit-llvm && opt -whatever | llc -- clang standalone mode
+1) Provide explicit pipeline as clang --> bc --> opt --> bc --> clang:
+As example: clang -emit-llvm -c -O0 -Xclang -disable-O0-optnone -Xclang -disable-llvm-passes main.cc -o main.bc && opt -O0 main.bc -o opt.bc && clang -c opt.bc -o binary.o
