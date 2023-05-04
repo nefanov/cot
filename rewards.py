@@ -5,6 +5,7 @@ delta (baseline, measurement, normalizer=None): calculate delta from the baselin
 It's decided that lower value is better, that's why it is (baseline - measurement) / (normalizer or baseline if not set)
 """
 
+
 def delta(baseline, measurement, normalizer=None):
     if normalizer:
         return (baseline - measurement) / normalizer

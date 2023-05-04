@@ -30,10 +30,10 @@ endif\n\
 \n\
 # Declarations\n\
 ifeq ($(ZCC),)\n\
- ZCC = gcc\n\
+ ZCC = standalone\n\
 endif\n\
 ifeq ($(LDCC),)\n\
- LDCC = gcc\n\
+ LDCC = standalone\n\
 endif\n\
 ifeq ($(LD_OPTS),)\n\
  LD_OPTS = -o a.out\n\

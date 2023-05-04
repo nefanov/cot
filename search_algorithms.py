@@ -92,7 +92,7 @@ def max_subseq_from_start(seq: list, episode_reward=0.) -> list:
 def search_strategy_eval(env, reward_estimator=const_factor_threshold,
                          reward_if_list_func=lambda a: np.mean(a),
                          step_lim=10, pick_pass=pick_random_from_positive, patience=FLAGS['patience'],
-                         pick_pass_args='action_log', dump_to_json_file=None, mode="llvm", examiner=examine_each_action):
+                         pick_pass_args='action_log', dump_to_json_file=None, mode="llvm_cg", examiner=examine_each_action):
     state = env.reset()
     results = list()
     pat = 0
@@ -101,9 +101,9 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
     episode_size_gain = 0.0
     for i in range(step_lim):
         printLightPurple("step " + str(i))
-        if mode == 'llvm':
+        if mode == 'llvm_cg':
             results = examiner(env, state, reward_estimator=reward_estimator, reward_if_list_func=reward_if_list_func)
-        elif mode == 'gcc':
+        elif mode == 'compiler_sa':
             results = examiner(env, reward_if_list_func=reward_if_list_func)
         param = {}
         if pick_pass_args == 'action_log':
@@ -111,7 +111,7 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
         best = pick_pass(results, **param)[-1]
         if mode == 'llvm':
             step = best["action_num"]
-        elif mode == 'gcc':
+        elif mode == 'compiler_sa':
             step = best['action']
         state, reward, d, _ = env.step(best["action"])  # apply. state and reward updates
         action_log.append(best)

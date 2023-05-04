@@ -5,9 +5,9 @@ import re
 import subprocess
 import search_policies
 from enum import Enum
-from gcc_reward import *
+from standalone_reward import *
 from rewards import const_factor_threshold
-from action_spaces_presets import load_as_from_file
+from action_spaces_presets import load_as_from_file, actions_oz_extra, actions_oz_baseline
 
 from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
 
@@ -15,17 +15,18 @@ from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
 from experiment_runner import search_strategy_eval
 
 FLAGS['tmpdir'] = os.getcwd()
-FLAGS["reverse_actions_filter_map"] = {f:f for f in load_as_from_file("gcc_O2.txt")}
+FLAGS["reverse_actions_filter_map"] = {f:f for f in load_as_from_file("gcc_O2_size_red.txt")}
 
 
 class Buildmode(Enum):
-    DRIVER="driver"
+    GCC_DRIVER="driver"
+    LLVM_PIPELINE="llvm"
     MAKE="make"
     CMAKE="cmake"
 
 
 class gcc_benchmark:
-    def __init__(self, from_dict={}, tmpdir=FLAGS['tmpdir'], build_mode=Buildmode.DRIVER):
+    def __init__(self, from_dict={}, tmpdir=FLAGS['tmpdir'], build_mode=Buildmode.GCC_DRIVER):
         self.content = from_dict
         self.compile_cmds = list()
         self.pre_compile_cmds = list()
@@ -36,6 +37,7 @@ class gcc_benchmark:
         self.log_file_path = tmpdir + os.sep + "last_compile_log.txt"
         self.last_compile_success = False
         self.build_mode = build_mode
+        self.compiler = "standalone"
         self.opt_env_var_name = "OPT"
 
     def __enter__(self):
@@ -54,14 +56,19 @@ class gcc_benchmark:
                         extra_objects_list=None, extra_include_dirs=None, sys_settings=dict(),
                        ):
         arch = "native"
-        if self.build_mode == Buildmode.DRIVER:
-            compiler = sys_settings.get('compiler', "gcc")
+        if self.build_mode == Buildmode.GCC_DRIVER:
+            self.compiler = sys_settings.get('compiler', "standalone")
+        if self.build_mode == Buildmode.LLVM_PIPELINE:
+            self.compiler = sys_settings.get('compiler', 'clang')
+            llvm_opt = sys_settings.get('opt', 'opt')
+            opt_baseline = sys_settings.get('opt_baseline','-O2')
         elif self.build_mode == Buildmode.MAKE:
-            compiler = "make -C"
+            self.compiler = "make -C"
         output_run_artifact = sys_settings.get('output_bin', "a.out")
         sys_lib_flags = sys_settings.get('sys_lib_flags', [])
         extra_obj = extra_objects_list if extra_objects_list else list()
         extra_compiler_flags = sys_settings.get('extra_compiler_flags', [])
+        self.opt_prepend = sys_settings.get('opt_prepend', [])
         self.opt_env_var_name = sys_settings.get('opt_var_name', 'OPT')
         self.tmpdir = tmpdir
 
@@ -73,12 +80,47 @@ class gcc_benchmark:
             for item in extra_include_dirs:
                 sys_lib_flags.append('-isystem')
                 sys_lib_flags.append(item)
-        if self.build_mode == Buildmode.DRIVER:
+
+        if self.build_mode == Buildmode.GCC_DRIVER:
             for name in names: # name is relative path to TU from the tmp dir
                 self.filepaths.append([tmpdir + os.sep + nm for nm in name.split(" ")])
                 self.compile_cmds.append(
-                    [compiler] + [" ".join(self.filepaths[-1])] + extra_obj + sys_lib_flags + extra_compiler_flags
+                    [self.compiler] + [" ".join(self.filepaths[-1])] + extra_obj + sys_lib_flags + extra_compiler_flags
                 )
+
+        elif self.build_mode == Buildmode.LLVM_PIPELINE:
+            for name in names: # name is relative path to TU from the tmp dir
+                self.filepaths.append([tmpdir + os.sep + nm for nm in name.split(" ")])
+                self.compile_cmds.append(
+                    [self.compiler] +
+                    ['-emit-llvm', '-c' ,'-O0', '-Xclang', '-disable-O0-optnone', '-Xclang', '-disable-llvm-passes'] +
+                    [" ".join(self.filepaths[-1])] + ['-o', name+'_nonopt.bc'] +
+                     sys_lib_flags + extra_compiler_flags
+                )
+
+                self.compile_cmds.append(
+                    [llvm_opt] +
+                    [opt_baseline, name + '_nonopt.bc', '-o', name + '_opt_baseline.bc']
+                )
+
+                self.compile_cmds.append(
+                    [llvm_opt] +
+                    [name + '_opt_baseline.bc', '-o', name + '_opt_optimized.bc']
+                )
+                self.compile_cmds.append(
+                    [self.compiler] +
+                    ['-c', ] +
+                    [name + '_opt_optimized.bc'] + ['-o',  name + '.o'] +
+                    sys_lib_flags + extra_compiler_flags
+                )
+
+                self.compile_cmds.append(
+                    [self.compiler] +
+                    [name + '.o'] +
+                    extra_obj + sys_lib_flags + extra_compiler_flags
+                )
+
+
         elif self.build_mode == Buildmode.MAKE:
             try:
                 self.filepaths.append(names[0]) # expect root target as a name
@@ -86,7 +128,7 @@ class gcc_benchmark:
                 self.filepaths.append(tmpdir + " all")
             env_vars = sys_settings.get('env_vars', {})
             self.compile_cmds.append(
-                [compiler] + [tmpdir + " " + self.filepaths[-1] + " ".join([k+"="+v for k,v in env_vars.items()])]
+                [self.compiler] + [tmpdir + " " + self.filepaths[-1] + " ".join([k+"="+v for k,v in env_vars.items()])]
             )
         if output_run_artifact != "a.out":
             self.outfile.append(self.tmpdir + os.sep + "a.out")
@@ -99,6 +141,10 @@ class gcc_benchmark:
                 ["qemu-aarch64 -L " + sys_settings['target_libs_dir'] + " ./" + output_run_artifact] + run_args)
 
     def compile(self, opt=None):
+        if not opt and len(self.opt_prepend) > 0:
+            opt = list()
+        if len(self.opt_prepend) > 0:
+            opt += self.opt_prepend
         for _cmd in self.compile_cmds:
             cmd = _cmd[:]
 
@@ -108,8 +154,11 @@ class gcc_benchmark:
                         opt[0] = '\'' + opt[0]
                         opt[-1] = opt[-1] + '\''
                     cmd.append(self.opt_env_var_name+"="+" ".join(opt))
-                elif self.build_mode == Buildmode.DRIVER:
+                elif self.build_mode == Buildmode.GCC_DRIVER:
                     cmd.append(" ".join(opt))
+                elif self.build_mode == Buildmode.LLVM_PIPELINE:
+                    if not cmd[1].startswith("-O") and cmd[0] != self.compiler:
+                        cmd.insert(1, " ".join(opt))
             results = subprocess.run([" ".join(cmd)], text=True, shell=True, capture_output=True)
             with open(self.log_file_path, 'w+') as fp:
                 output = "Building by cmd: " + str(cmd) + ":\n" + "STDOUT: " + str(results.stdout) + "\nSTDERR: " + str(results.stderr)
@@ -201,7 +250,7 @@ class gcc_env:
         self.observation_space=observation_space
         self.config=config
         self.reward_spaces = reward_spaces
-        printGreen("Creating new gcc environment")
+        printGreen("Creating new standalone environment")
         pass
 
     def __enter__(self):
@@ -211,7 +260,7 @@ class gcc_env:
         pass
 
     def reset(self):
-        printGreen("Resetting gcc environment...")
+        printGreen("Resetting standalone environment...")
         self.benchmark.compile()
         self.action_history.clear()
         reward_metrics = list()
@@ -250,19 +299,25 @@ class gcc_env:
         self.state = state
         return state, reward, done, info
 
-    def probe(self, actions: list, reward_func=reward_adapter):
+    def probe(self, actions: list, reward_func=reward_adapter, need_pre_check=None):
         prev_state = self.state
         done = False
         info = None
 
         seq = self.action_history + actions
         self.benchmark.compile(opt=seq)
+        if need_pre_check:
+            pre_reward_check_val = self.reward_spaces[1].evaluate(env=self)
+            if prev_state[2] <= pre_reward_check_val:
+                return self.state, float('-inf'), done, {"need_ingore": True}
         reward_metrics = list()
         for rw_meter in self.reward_spaces:
             reward_metrics.append(rw_meter.evaluate(env=self))
         reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
         state = [None] + [r for r in reward_metrics]
-        print("Probe state:", state, reward, "on", actions)
+        print("Step after probe from:   size", prev_state[2], "to", state[2],
+              "\n\t\t\t\t\t\truntime", prev_state[1],
+              "to",state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", opt)
         return state, reward, done, info
 
 
@@ -273,7 +328,11 @@ def check_each_action(env: gcc_env, reward_if_list_func=np.mean):
     prev_size = prev_state[2]
     prev_runtime = reward_if_list_func(prev_state[1])
     for idx, action in enumerate(env.action_space):
-        state, r, d, i = env.probe([action])
+        state, r, d, i = env.probe([action], need_pre_check=True)
+        if i:
+            if i.get("need_ignore", "False"):
+                print("Ignoring action as non-effective:", action)
+                continue
         passes_results.append( {"action": action,
                     "action_num": idx,
                     "reward": r,
@@ -299,8 +358,8 @@ def search_episode(env: gcc_env, heuristics="least_from_positive_sampling", step
     # ========================
 def test_gnumake():
     gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
-    gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/bzip2d/src",
-                    names=[""], run_args=["1"], sys_settings={'output_bin':"__run", 'opt_var_name': "CCC_OPTS"})
+    gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/security_blowfish_d/src",
+                    names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS", "opt_prepend":["-O0 "]})
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), ObjSizeBytesRewardMetrics()])
     state = env.reset()
     return env
@@ -315,22 +374,31 @@ def cbench_env(name, mode="default", settings=None):
         placement = "third_party/cbench/cBench_V1.1/telecom_gsm/src"
 
     gbm.make_benchmark(tmpdir=placement,
-                       names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS"})
+                       names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS","opt_prepend":["-O2"]})
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     return env
 
 
-def test_makebydriver():
-    gbm = gcc_benchmark(build_mode=Buildmode.DRIVER)
+def test_makebydriver_gcc():
+    gbm = gcc_benchmark(build_mode=Buildmode.GCC_DRIVER)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     return env
+
+
+def test_makeby_clang_llvm():
+    gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
+    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
+    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
+    state = env.reset()
+    return env
     # ===================================================================================================
 
+
 if __name__ == '__main__':
-    env = test_gnumake()
+    env = test_makeby_clang_llvm()
     seq_list = []
     #printLightPurple(str(env.step(action="-O2")))
     for i in range(FLAGS["search_iterations"]):
@@ -339,6 +407,6 @@ if __name__ == '__main__':
              reward_estimator=const_factor_threshold,
              pick_pass=search_policies.pick_least_from_positive_samples,
              dump_to_json_file="results" + os.sep + "test_" + str(os.getpid()) + "_"  + "_" + str(i) + ".json",
-             mode='gcc', examiner=check_each_action))
+             mode='compiler_sa', examiner=check_each_action))
     positive_res = [s for s in seq_list if s["episode_reward"] >= 0.]
 
