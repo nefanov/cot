@@ -114,11 +114,11 @@ class gcc_benchmark:
                     sys_lib_flags + extra_compiler_flags
                 )
 
-                self.compile_cmds.append(
-                    [self.compiler] +
-                    [name + '.o'] +
-                    extra_obj + sys_lib_flags + extra_compiler_flags
-                )
+            self.compile_cmds.append(
+                [self.compiler] +
+                [name + '.o' for name in names] +
+                extra_obj + sys_lib_flags + extra_compiler_flags
+            )
 
 
         elif self.build_mode == Buildmode.MAKE:
@@ -391,7 +391,7 @@ def test_makebydriver_gcc():
 
 def test_makeby_clang_llvm():
     gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
-    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
+    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c", "1.c"])
     env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
     state = env.reset()
     return env

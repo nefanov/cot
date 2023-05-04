@@ -48,4 +48,16 @@ clean:\n\
         rm -f a.out *.o *.a *.s *.i *.I"
     ))
 
+
+def rewrite_makefile_for_llvm(fn, fnout, clang='clang', opt='opt'):
+    with open(fn, 'r') as f_in:
+        data = __parse_cbench_makefmt(f_in.read())
+        lines = f_in.readlines()
+        for i, l in enumerate(lines):
+            pass
+    with open(fnout, 'w+') as f_out:
+        pass
+
+
+
 test_parse_utest()
