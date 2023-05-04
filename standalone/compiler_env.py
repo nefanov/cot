@@ -61,7 +61,7 @@ class gcc_benchmark:
         if self.build_mode == Buildmode.LLVM_PIPELINE:
             self.compiler = sys_settings.get('compiler', 'clang')
             llvm_opt = sys_settings.get('opt', 'opt')
-            opt_baseline = sys_settings.get('opt_baseline','-O2')
+            opt_baseline = sys_settings.get('opt_baseline', '-O1')
         elif self.build_mode == Buildmode.MAKE:
             self.compiler = "make -C"
         output_run_artifact = sys_settings.get('output_bin', "a.out")
@@ -273,6 +273,7 @@ class gcc_env:
         result = self.multistep([action])
         return result
 
+
     def reward_adapter(l: list, prev: list, hdrs: list, mode="const_runtime_min_text_sz_def_thr"):
         if len(prev) != len(l):
             print("reward metrics can't be matched")
@@ -299,7 +300,7 @@ class gcc_env:
         self.state = state
         return state, reward, done, info
 
-    def probe(self, actions: list, reward_func=reward_adapter, need_pre_check=None):
+    def probe(self, actions: list, reward_func=reward_adapter, need_pre_check=False):
         prev_state = self.state
         done = False
         info = None
@@ -307,17 +308,17 @@ class gcc_env:
         seq = self.action_history + actions
         self.benchmark.compile(opt=seq)
         if need_pre_check:
-            pre_reward_check_val = self.reward_spaces[1].evaluate(env=self)
-            if prev_state[2] <= pre_reward_check_val:
+            prior_metrics_check_val = self.reward_spaces[1].evaluate(env=self)
+            if prev_state[2] <= prior_metrics_check_val:
                 return self.state, float('-inf'), done, {"need_ingore": True}
         reward_metrics = list()
         for rw_meter in self.reward_spaces:
             reward_metrics.append(rw_meter.evaluate(env=self))
         reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
         state = [None] + [r for r in reward_metrics]
-        print("Step after probe from:   size", prev_state[2], "to", state[2],
+        print("Positive probe:   size", prev_state[2], "to", state[2],
               "\n\t\t\t\t\t\truntime", prev_state[1],
-              "to",state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", opt)
+              "to",state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", actions)
         return state, reward, done, info
 
 
