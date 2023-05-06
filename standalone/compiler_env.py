@@ -4,10 +4,14 @@ import pprint
 import re
 import subprocess
 import search_policies
+import shutil
 from enum import Enum
+import bench_configs
 from standalone_reward import *
+from routine import file_utils
 from rewards import const_factor_threshold
 from action_spaces_presets import load_as_from_file, actions_oz_extra, actions_oz_baseline
+
 
 from common import FLAGS, printRed, printLightPurple, printGreen, printYellow
 
@@ -71,6 +75,7 @@ class gcc_benchmark:
         self.opt_prepend = sys_settings.get('opt_prepend', [])
         self.opt_env_var_name = sys_settings.get('opt_var_name', 'OPT')
         self.tmpdir = tmpdir
+        self.run_working_dir = sys_settings.get('run_working_dir', None)
 
         if 'arch_triplet' in sys_settings.keys():
             if sys_settings['arch_triplet'].startswith("aarch64"):
@@ -185,9 +190,10 @@ class gcc_benchmark:
         if self.last_compile_success is False:
             printRed("run() error: inconsistent build")
             return 1, 0
-
+        if self.run_working_dir:
+            shutil.copyfile(self.outfile[-1], self.run_working_dir + os.sep + self.outfile[-1])
         results = subprocess.run([" ".join(pre_cmd + self.run_cmd)], text=True, shell=True, capture_output=True,
-                                 cwd=self.tmpdir)
+                                 cwd=self.tmpdir if not self.run_working_dir else self.run_working_dir)
         with open(self.log_file_path, 'w+') as fp:
             output = "Run by cmd: " + str(pre_cmd + self.run_cmd) + ":\n" + "STDOUT: " + str(
                 results.stdout) + "\nSTDERR: " + str(
@@ -236,7 +242,7 @@ class gcc_benchmark:
         return int(results.stdout.split('\t')[0])
 
 
-class gcc_env:
+class CompilerEnv:
     def __init__(self,  # creates a new environment (same as gym.make)
         config=dict(),  # selects the compiler to use
         benchmark=gcc_benchmark(),  # selects the program to compile
@@ -272,7 +278,6 @@ class gcc_env:
     def step(self, action):
         result = self.multistep([action])
         return result
-
 
     def reward_adapter(l: list, prev: list, hdrs: list, mode="const_runtime_min_text_sz_def_thr"):
         if len(prev) != len(l):
@@ -323,7 +328,7 @@ class gcc_env:
 
 
 # ========================  stuff for simplified search algorithms =================================
-def check_each_action(env: gcc_env, reward_if_list_func=np.mean):
+def check_each_action(env: CompilerEnv, reward_if_list_func=np.mean):
     passes_results = []
     prev_state = env.state
     prev_size = prev_state[2]
@@ -346,7 +351,7 @@ def check_each_action(env: gcc_env, reward_if_list_func=np.mean):
     return passes_results
 
 
-def search_episode(env: gcc_env, heuristics="least_from_positive_sampling", steps=FLAGS["episode_len"]):
+def search_episode(env: CompilerEnv, heuristics="least_from_positive_sampling", steps=FLAGS["episode_len"]):
     episode_reward = 0.0
     episode_size_gain = 0.0
     for i in range(steps):
@@ -361,7 +366,7 @@ def test_gnumake():
     gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
     gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/security_blowfish_d/src",
                     names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS", "opt_prepend":["-O0 "]})
-    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), ObjSizeBytesRewardMetrics()])
+    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), ObjSizeBytesRewardMetrics()])
     state = env.reset()
     return env
 
@@ -376,7 +381,7 @@ def cbench_env(name, mode="default", settings=None):
 
     gbm.make_benchmark(tmpdir=placement,
                        names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS","opt_prepend":["-O2"]})
-    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
+    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     return env
 
@@ -384,7 +389,7 @@ def cbench_env(name, mode="default", settings=None):
 def test_makebydriver_gcc():
     gbm = gcc_benchmark(build_mode=Buildmode.GCC_DRIVER)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
-    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
+    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
     return env
 
@@ -392,16 +397,31 @@ def test_makebydriver_gcc():
 def test_makeby_clang_llvm():
     gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c", "1.c"])
-    env = gcc_env(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
+    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
     state = env.reset()
     return env
     # ===================================================================================================
 
 
+def test_makeby_clang_llvm_cbench(name="gsm"):
+    cbench_test_path = bench_configs.cbench[name]["src"]
+    gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
+    gbm.make_benchmark(tmpdir=FLAGS['tmpdir'],
+                       names=file_utils.get_filenames_in_dir(directory=cbench_test_path, ext=".c"),
+                       sys_settings={'run_working_dir': cbench_test_path,
+                                     'extra_compiler_flags': bench_configs.cbench[name]["extra_c_flags"]},
+                       run_args=bench_configs.cbench[name]["run_args"] +
+                                  [os.path.join(FLAGS['tmpdir'],
+                                  os.path.join(cbench_test_path, bench_configs.cbench[name]["test_data_file_path"]))] +
+                                  bench_configs.cbench[name]["post_run_args"])
+    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
+    state = env.reset()
+    return env
+
+
 if __name__ == '__main__':
-    env = test_makeby_clang_llvm()
+    env = test_makeby_clang_llvm_cbench()
     seq_list = []
-    #printLightPurple(str(env.step(action="-O2")))
     for i in range(FLAGS["search_iterations"]):
         printRed("Iteration " + str(i))
         seq_list.append(search_strategy_eval(env,
