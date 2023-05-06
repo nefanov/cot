@@ -22,7 +22,7 @@ cbench = {
     },
     'crc32': {
         "src": 'third_party/cbench/cBench_V1.1/telecom_CRC32/src',
-        "extra_c_flags": [],
+        "extra_c_flags": ['-c'],
         "run_args" : [],
         "test_data_file_path": '../../telecom_data/1.pcm',
         "post_run_args": ["> /dev/null"]

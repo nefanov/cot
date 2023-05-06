@@ -403,7 +403,7 @@ def test_makeby_clang_llvm():
     # ===================================================================================================
 
 
-def test_makeby_clang_llvm_cbench(name="gsm"):
+def test_makeby_clang_llvm_cbench(name="crc32"):
     cbench_test_path = bench_configs.cbench[name]["src"]
     gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'],
