@@ -1,3 +1,5 @@
+import sys
+
 from common import *
 
 
@@ -79,6 +81,7 @@ def max_subseq_from_start(seq: list, episode_reward=0.) -> list:
     """
     this is very slow (O(n)) implementation of max subseq search from start element
     """
+    need_terminate = False
     gain = episode_reward
     up_lim = len(seq) - 1
     for i in range(len(seq)):
@@ -108,7 +111,22 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
         param = {}
         if pick_pass_args == 'action_log':
             param.update({pick_pass_args: [a['action_num'] for a in action_log]}) # some strategies uses previous actions log | etc
-        best = pick_pass(results, **param)[-1]
+        best = None
+        try:
+            best = pick_pass(results, **param)[-1]
+        except:
+            printRed("No positive results on step: " + str(i))
+        if not best or best['reward'] <= .0:
+            pat += 1
+            if patience <= pat:
+                print("=============PATIENCE LIMIT EXCEEDED===============")
+                break
+            if not best:
+                print("=============SEARCH GOT LOST & STOPPED===============")
+                print("==Tip:change rules from aggressive to more flexible==")
+                need_terminate = False
+                break
+
         if mode == 'llvm':
             step = best["action_num"]
         elif mode == 'compiler_sa':
@@ -121,18 +139,15 @@ def search_strategy_eval(env, reward_estimator=const_factor_threshold,
             pass
         episode_size_gain += best['size gain %']
 
-        if best['reward'] <= .0:
-            pat += 1
-            if patience <= pat:
-                print("=============PATIENCE LIMIT EXCEEDED===============")
-                break
-
-    print("====================================================")
+    print("=====================================================")
+    print("====================Action LOG:======================")
     pprint.pprint(action_log)
     if dump_to_json_file:
         with open(dump_to_json_file, "w+") as results:
             json.dump(action_log, results)
 
+    if need_terminate:
+        sys.exit(0)
     # find the subsequence from start, which gives max size gain
     action_log = max_subseq_from_start(action_log, episode_reward=episode_size_gain)
     return {"action_log": action_log, "episode_reward": episode_reward, "episode_size_gain": episode_size_gain}

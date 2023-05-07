@@ -65,7 +65,7 @@ class gcc_benchmark:
         if self.build_mode == Buildmode.LLVM_PIPELINE:
             self.compiler = sys_settings.get('compiler', 'clang')
             llvm_opt = sys_settings.get('opt', 'opt')
-            opt_baseline = sys_settings.get('opt_baseline', '-O1')
+            opt_baseline = sys_settings.get('opt_baseline', '-O0')
         elif self.build_mode == Buildmode.MAKE:
             self.compiler = "make -C"
         output_run_artifact = sys_settings.get('output_bin', "a.out")
@@ -124,7 +124,6 @@ class gcc_benchmark:
                 [name + '.o' for name in names] +
                 extra_obj + sys_lib_flags + extra_compiler_flags
             )
-
 
         elif self.build_mode == Buildmode.MAKE:
             try:
@@ -323,7 +322,7 @@ class CompilerEnv:
         state = [None] + [r for r in reward_metrics]
         print("Positive probe:   size", prev_state[2], "to", state[2],
               "\n\t\t\t\t\t\truntime", prev_state[1],
-              "to",state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", actions)
+              "to", state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", actions)
         return state, reward, done, info
 
 
@@ -362,6 +361,7 @@ def search_episode(env: CompilerEnv, heuristics="least_from_positive_sampling", 
 
     return positive
     # ========================
+
 def test_gnumake():
     gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
     gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/security_blowfish_d/src",
@@ -403,7 +403,8 @@ def test_makeby_clang_llvm():
     # ===================================================================================================
 
 
-def test_makeby_clang_llvm_cbench(name="crc32"):
+def test_makeby_clang_llvm_cbench(name="gsm"):
+    print("Heuristic search for cbench test", name)
     cbench_test_path = bench_configs.cbench[name]["src"]
     gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'],
