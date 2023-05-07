@@ -5,6 +5,7 @@ import re
 import subprocess
 import search_policies
 import shutil
+import itertools
 from enum import Enum
 import bench_configs
 from standalone_reward import *
@@ -403,8 +404,8 @@ def test_makeby_clang_llvm():
     # ===================================================================================================
 
 
-def test_makeby_clang_llvm_cbench(name="gsm"):
-    print("Heuristic search for cbench test", name)
+def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
+    print("Tuning for cbench test", name)
     cbench_test_path = bench_configs.cbench[name]["src"]
     gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'],
@@ -415,13 +416,21 @@ def test_makeby_clang_llvm_cbench(name="gsm"):
                                   [os.path.join(FLAGS['tmpdir'],
                                   os.path.join(cbench_test_path, bench_configs.cbench[name]["test_data_file_path"]))] +
                                   bench_configs.cbench[name]["post_run_args"])
-    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
+    env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=action_space)
     state = env.reset()
     return env
 
 
+def reordering_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
+    env = tune_by_clang_llvm_cbench(name=name, action_space=action_space)
+    seq_list = []
+    for i in range(FLAGS["search_iterations"]):
+        printRed("Iteration " + str(i))
+        actions = itertools.permutations(action_space)
+
+
 if __name__ == '__main__':
-    env = test_makeby_clang_llvm_cbench()
+    env = tune_by_clang_llvm_cbench()
     seq_list = []
     for i in range(FLAGS["search_iterations"]):
         printRed("Iteration " + str(i))
