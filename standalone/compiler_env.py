@@ -458,7 +458,7 @@ def test_search():
 
 
 if __name__ == '__main__':
-    printLightPurple("Sequences better than -O2:")
     res = reordering_clang_llvm_cbench(name="bzip2e")
+    printLightPurple("Sequences better than -O2:")
     for i in res:
         pprint.pprint(i)
