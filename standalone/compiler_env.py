@@ -421,23 +421,30 @@ def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
     return env
 
 
-def reordering_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra, num_iterations=FLAGS["search_iterations"]):
+def reordering_clang_llvm_cbench(name="crc32", action_space=actions_oz_extra, num_iterations=FLAGS["search_iterations"],
+                                 base='-O2'):
     env = tune_by_clang_llvm_cbench(name=name, action_space=action_space)
     seq_list = []
+    baseline_state, baseline_r, baseline_d, baseline_i = env.multistep(actions=[base])
+    baseline_size = baseline_state[2]
+    baseline_runtime = np.mean(baseline_state[1])
+    env.reset()
+    s_list = sequences.get_permutations(action_space, num=num_iterations)
     for i in range(num_iterations):
         printRed("Iteration " + str(i))
-        actions = sequences.get_permutations(action_space, num=num_iterations)
-        prev_state = env.state() # defaultly, '-O0'
-        baseline_state, baseline_r, baseline_d, baseline_i = env.multistep(actions=['-O2'])
+        actions = s_list[i]
+        state, r, d, i = env.multistep(actions=actions)
+        size = state[2]
+        runtime = np.mean(state[1])
         env.reset()
-        state, r, d, i = env.step(actions=actions)
-        env.reset()
-        # TO DO:
-        # check cond,
-        # if reward > 0 -- add to seq_list
+        if runtime <= baseline_runtime and size < baseline_size:
+            seq_list.append({'actions': actions, 'size_gain': (baseline_size - size)/100.,'rt_gain': (baseline_runtime - runtime)/100.})
+            printLightPurple("Sequence is better than baseline")
+            pprint.pprint(seq_list[-1])
     return seq_list
 
-if __name__ == '__main__':
+
+def test_search():
     env = tune_by_clang_llvm_cbench()
     seq_list = []
     for i in range(FLAGS["search_iterations"]):
@@ -449,3 +456,9 @@ if __name__ == '__main__':
              mode='compiler_sa', examiner=check_each_action))
     positive_res = [s for s in seq_list if s["episode_reward"] >= 0.]
 
+
+if __name__ == '__main__':
+    printLightPurple("Sequences better than -O2:")
+    res = reordering_clang_llvm_cbench(name="bzip2e")
+    for i in res:
+        pprint.pprint(i)
