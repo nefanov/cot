@@ -9,7 +9,7 @@ import itertools
 from enum import Enum
 import bench_configs
 from standalone_reward import *
-from routine import file_utils
+from routine import file_utils, sequences
 from rewards import const_factor_threshold
 from action_spaces_presets import load_as_from_file, actions_oz_extra, actions_oz_baseline
 
@@ -421,13 +421,20 @@ def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
     return env
 
 
-def reordering_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
+def reordering_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra, num_iterations=FLAGS["search_iterations"]):
     env = tune_by_clang_llvm_cbench(name=name, action_space=action_space)
     seq_list = []
-    for i in range(FLAGS["search_iterations"]):
+    for i in range(num_iterations):
         printRed("Iteration " + str(i))
-        actions = itertools.permutations(action_space)
-
+        actions = sequences.get_permutations(action_space, num=num_iterations)
+        prev_state = env.state() # defaultly, '-O0'
+        baseline_state, baseline_r, baseline_d, baseline_i = env.multistep(actions=['-O2'])
+        env.reset()
+        state, r, d, i = env.step(actions=actions)
+        # TO DO:
+        # check cond,
+        # if reward > 0 -- add to seq_list
+    return seq_list
 
 if __name__ == '__main__':
     env = tune_by_clang_llvm_cbench()
