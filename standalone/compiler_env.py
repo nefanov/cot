@@ -44,6 +44,7 @@ class gcc_benchmark:
         self.build_mode = build_mode
         self.compiler = "standalone"
         self.opt_env_var_name = "OPT"
+        self.pass_manager_ver = "old"
 
     def __enter__(self):
         pass
@@ -71,6 +72,7 @@ class gcc_benchmark:
             self.compiler = "make -C"
         output_run_artifact = sys_settings.get('output_bin', "a.out")
         sys_lib_flags = sys_settings.get('sys_lib_flags', [])
+        self.pass_manager_ver = sys_settings.get('llvm_pass_manager',"old")
         extra_obj = extra_objects_list if extra_objects_list else list()
         extra_compiler_flags = sys_settings.get('extra_compiler_flags', [])
         self.opt_prepend = sys_settings.get('opt_prepend', [])
@@ -163,7 +165,10 @@ class gcc_benchmark:
                     cmd.append(" ".join(opt))
                 elif self.build_mode == Buildmode.LLVM_PIPELINE:
                     if not cmd[1].startswith("-O") and cmd[0] != self.compiler:
-                        cmd.insert(1, " ".join(opt))
+                        if self.pass_manager_ver == "old" or (" ".join(opt).startswith("-O")):
+                            cmd.insert(1, " ".join(opt))
+                        else:
+                            cmd.insert(1,  '-passes="'+ ",".join(opt) +'"')
             results = subprocess.run([" ".join(cmd)], text=True, shell=True, capture_output=True)
             with open(self.log_file_path, 'w+') as fp:
                 output = "Building by cmd: " + str(cmd) + ":\n" + "STDOUT: " + str(results.stdout) + "\nSTDERR: " + str(results.stderr)
@@ -321,9 +326,9 @@ class CompilerEnv:
             reward_metrics.append(rw_meter.evaluate(env=self))
         reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
         state = [None] + [r for r in reward_metrics]
-        print("Positive probe:   size", prev_state[2], "to", state[2],
-              "\n\t\t\t\t\t\truntime", prev_state[1],
-              "to", state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", actions)
+        #print("Positive probe:   size", prev_state[2], "to", state[2],
+        #      "\n\t\t\t\t\t\truntime", prev_state[1],
+        #      "to", state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", actions)
         return state, reward, done, info
 
 
@@ -404,14 +409,15 @@ def test_makeby_clang_llvm():
     # ===================================================================================================
 
 
-def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
+def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra, sys_settings={}):
     print("Tuning for cbench test", name)
     cbench_test_path = bench_configs.cbench[name]["src"]
     gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
+    sys_settings.update({'run_working_dir': cbench_test_path,
+                         'extra_compiler_flags': bench_configs.cbench[name]["extra_c_flags"]})
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'],
                        names=file_utils.get_filenames_in_dir(directory=cbench_test_path, ext=".c"),
-                       sys_settings={'run_working_dir': cbench_test_path,
-                                     'extra_compiler_flags': bench_configs.cbench[name]["extra_c_flags"]},
+                       sys_settings=sys_settings,
                        run_args=bench_configs.cbench[name]["run_args"] +
                                   [os.path.join(FLAGS['tmpdir'],
                                   os.path.join(cbench_test_path, bench_configs.cbench[name]["test_data_file_path"]))] +
@@ -421,44 +427,101 @@ def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra):
     return env
 
 
-def reordering_clang_llvm_cbench(name="crc32", action_space=actions_oz_extra, num_iterations=FLAGS["search_iterations"],
-                                 base='-O2'):
-    env = tune_by_clang_llvm_cbench(name=name, action_space=action_space)
-    seq_list = []
-    baseline_state, baseline_r, baseline_d, baseline_i = env.multistep(actions=[base])
+def prepare_env_with_baseline(name="crc32", action_space=actions_oz_extra, base='-O2', sys_settings={}):
+    env = tune_by_clang_llvm_cbench(name=name, action_space=action_space, sys_settings=sys_settings)
+    baseline_state, _, _, _ = env.multistep(actions=[base])
     baseline_size = baseline_state[2]
     baseline_runtime = np.mean(baseline_state[1])
     env.reset()
+    return env, baseline_size, baseline_runtime
+
+
+def examine_sequence(name="crc32", action_space=actions_oz_extra, base='-O2'):
+    print("Examine sequence for test", name, "with baseline", base)
+    env, baseline_size, baseline_runtime = prepare_env_with_baseline(name=name, action_space=action_space, base=base)
+    actions = action_space
+    state, r, d, _ = env.multistep(actions=actions)
+    size = state[2]
+    runtime = np.mean(state[1])
+
+    if runtime <= baseline_runtime and size < baseline_size:
+        result = {'actions': actions, 'size_gain': (baseline_size - size) / 100.,
+                         'rt_gain': (baseline_runtime - runtime) / 100.}
+        printLightPurple("Sequence is better than baseline")
+        print(runtime , " <= " , baseline_runtime, " and " , size , " < " ,
+              baseline_size)
+        pprint.pprint(result)
+        return result
+    else:
+        return {}
+
+
+def reordering_clang_llvm_cbench(name="crc32", action_space=actions_oz_extra, num_iterations=FLAGS["search_iterations"],
+                                 base='-O2', sys_settings={}):
+    env = tune_by_clang_llvm_cbench(name=name, action_space=action_space, sys_settings=sys_settings)
+    seq_list = []
+
+    baseline_state, _, _, _ = env.multistep(actions=[base])
+    baseline_size = baseline_state[2]
+    baseline_runtime = np.mean(baseline_state[1])
+    env.reset()
+
     s_list = sequences.get_permutations(action_space, num=num_iterations)
+
     for i in range(num_iterations):
         printRed("Iteration " + str(i))
         actions = s_list[i]
-        state, r, d, i = env.multistep(actions=actions)
+        state, r, d, _ = env.multistep(actions=actions)
         size = state[2]
         runtime = np.mean(state[1])
+        print(runtime)
         env.reset()
+        print(runtime)
+        print(runtime, "<=", baseline_runtime, "and", size, "<", baseline_size)
         if runtime <= baseline_runtime and size < baseline_size:
             seq_list.append({'actions': actions, 'size_gain': (baseline_size - size)/100.,'rt_gain': (baseline_runtime - runtime)/100.})
             printLightPurple("Sequence is better than baseline")
+            print(runtime, "<=" , baseline_runtime, "and", size, "<", baseline_size)
             pprint.pprint(seq_list[-1])
     return seq_list
 
 
-def test_search():
-    env = tune_by_clang_llvm_cbench()
+def test_heuristic_search(name="gsm", action_space=actions_oz_extra, sys_settings={}):
+    env = tune_by_clang_llvm_cbench(name=name, action_space=action_space, sys_settings=sys_settings)
     seq_list = []
     for i in range(FLAGS["search_iterations"]):
         printRed("Iteration " + str(i))
         seq_list.append(search_strategy_eval(env,
              reward_estimator=const_factor_threshold,
              pick_pass=search_policies.pick_least_from_positive_samples,
-             dump_to_json_file="results" + os.sep + "test_" + str(os.getpid()) + "_"  + "_" + str(i) + ".json",
+             dump_to_json_file="results" + os.sep + "test_" + str(os.getpid()) + "_" + "_" + str(i) + ".json",
              mode='compiler_sa', examiner=check_each_action))
     positive_res = [s for s in seq_list if s["episode_reward"] >= 0.]
+    return positive_res
 
 
-if __name__ == '__main__':
-    res = reordering_clang_llvm_cbench(name="bzip2e")
+def dobivator(name="gsm", base='-O2', action_space=actions_oz_extra, sys_settings={}):
+    print("Experiment on adjusting", name, base)
+    return test_heuristic_search(name=name, action_space=action_space, sys_settings=sys_settings.update({'opt_baseline': base}))
+
+
+def test_reordering(name="gsm", action_space=actions_oz_baseline, sys_settings={}):
+    res = reordering_clang_llvm_cbench(name=name, action_space=action_space, base="-O2", sys_settings=sys_settings)
     printLightPurple("Sequences better than -O2:")
     for i in res:
         pprint.pprint(i)
+
+
+def test_seq():
+    l = ['-dce', '-break-crit-edges', '-memcpyopt', '-licm', '-dse', '-newgvn', '-simplifycfg', '-mem2reg', '-instcombine', '-loop-reduce', '-adce', '-sroa', '-deadargelim', '-jump-threading', '-mergereturn', '-loop-deletion', '-aggressive-instcombine', '-gvn-hoist', '-prune-eh', '-lcssa', '-loop-simplify', '-early-cse-memssa', '-loop-versioning', '-gvn', '-early-cse-memssa', '-sccp', '-die', '-reassociate', '-loop-rotate', '-mergefunc']
+    pprint.pprint(examine_sequence(name='gsm', action_space=l))
+
+
+if __name__ == '__main__':
+    l= []
+    with open("passes/O2_simpl.txt","r") as pss:
+        __l = pss.read()
+        l = __l.split("\n")
+
+    test_reordering(name="crc32", action_space=l, sys_settings={'llvm_pass_manager':"new", 'opt':'opt-15', 'compiler':'clang-15'})
+    #test_seq()
