@@ -310,25 +310,27 @@ class CompilerEnv:
         self.state = state
         return state, reward, done, info
 
-    def probe(self, actions: list, reward_func=reward_adapter, need_pre_check=False):
+    def probe(self, actions: list, reward_func=reward_adapter, need_pre_check={'need':False,
+                                                                               'first_priority_metrics':[2]}):
         prev_state = self.state
         done = False
         info = None
-
         seq = self.action_history + actions
         self.benchmark.compile(opt=seq)
         if need_pre_check:
-            prior_metrics_check_val = self.reward_spaces[1].evaluate(env=self)
-            if prev_state[2] <= prior_metrics_check_val:
-                return self.state, float('-inf'), done, {"need_ingore": True}
+            '''
+            If this action makes results worse than previous, propagate the flag "need_ignore" to use wherever next
+            for decision making, and decide that this probe is failed
+            '''
+            for  i in need_pre_check['first_priority_metrics']:
+                prior_metrics_val = self.reward_spaces[i-1].evaluate(env=self)
+                if prev_state[i] <= prior_metrics_val:
+                    return self.state, float('-inf'), done, {"need_ingore": True}
         reward_metrics = list()
         for rw_meter in self.reward_spaces:
             reward_metrics.append(rw_meter.evaluate(env=self))
         reward = reward_func(reward_metrics, prev_state[1:], [r.kind for r in self.reward_spaces])
         state = [None] + [r for r in reward_metrics]
-        #print("Positive probe:   size", prev_state[2], "to", state[2],
-        #      "\n\t\t\t\t\t\truntime", prev_state[1],
-        #      "to", state[1], "\n\t\t\t\t\t\t--------------","\n\t\t\t\t\t\treward:", reward, "on passes", actions)
         return state, reward, done, info
 
 
@@ -339,7 +341,7 @@ def check_each_action(env: CompilerEnv, reward_if_list_func=np.mean):
     prev_size = prev_state[2]
     prev_runtime = reward_if_list_func(prev_state[1])
     for idx, action in enumerate(env.action_space):
-        state, r, d, i = env.probe([action], need_pre_check=True)
+        state, r, d, i = env.probe([action], need_pre_check={'need':True, 'first_priority_metrics': [2]})
         if i:
             if i.get("need_ignore", "False"):
                 print("Ignoring action as non-effective:", action)

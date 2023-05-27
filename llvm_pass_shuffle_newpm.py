@@ -41,6 +41,7 @@ def bench_time(target_time=0):
             return diff_time
     return agg_time / 10
 
+
 def import_passes(path, legacy=False, expand=True):
     f = open(path, 'r')
     if legacy:
@@ -69,6 +70,7 @@ def find_delim(string):
             break
     return (open_index, close_index + open_index + 1)
 
+
 def expand_pass(string):
     sign = [',']
     position = [-1]
@@ -95,6 +97,7 @@ def expand_pass(string):
             i += (namelen + 2) * (n - 1)
         i += 1
     return string
+
 
 if __name__ == '__main__':
     passes = import_passes(defconf["passes"], expand=True)
