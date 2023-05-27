@@ -1,2 +1,3 @@
-1) Provide explicit pipeline as clang --> bc --> opt --> bc --> clang:
-As example: clang -emit-llvm -c -O0 -Xclang -disable-O0-optnone -Xclang -disable-llvm-passes main.cc -o main.bc && opt -O0 main.bc -o opt.bc && clang -c opt.bc -o binary.o
+I. For cBench + gcc phase-choosing:
+1) Compose list of the chosen GCC optimizations (O2 + Chen [2012])
+2) Modify the standalone env
