@@ -30,7 +30,7 @@ class Buildmode(Enum):
     CMAKE="cmake"
 
 
-class gcc_benchmark:
+class standalone_benchmark:
     def __init__(self, from_dict={}, tmpdir=FLAGS['tmpdir'], build_mode=Buildmode.GCC_DRIVER):
         self.content = from_dict
         self.compile_cmds = list()
@@ -249,12 +249,12 @@ class gcc_benchmark:
 
 class CompilerEnv:
     def __init__(self,  # creates a new environment (same as gym.make)
-        config=dict(),  # selects the compiler to use
-        benchmark=gcc_benchmark(),  # selects the program to compile
-        observation_space=None,  # selects the observation space
-        reward_spaces=[],  # selects the optimization target
-        action_space=list(FLAGS["reverse_actions_filter_map"].keys())
-                ):
+                 config=dict(),  # selects the compiler to use
+                 benchmark=standalone_benchmark(),  # selects the program to compile
+                 observation_space=None,  # selects the observation space
+                 reward_spaces=[],  # selects the optimization target
+                 action_space=list(FLAGS["reverse_actions_filter_map"].keys())
+                 ):
         self.action_history = list()
         self.action_space = action_space
         self.benchmark = benchmark
@@ -371,7 +371,7 @@ def search_episode(env: CompilerEnv, heuristics="least_from_positive_sampling", 
     # ========================
 
 def test_gnumake():
-    gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
+    gbm = standalone_benchmark(build_mode=Buildmode.MAKE)
     gbm.make_benchmark(tmpdir="third_party/cbench/cBench_V1.1/security_blowfish_d/src",
                     names=[""], run_args=["1"], sys_settings={'output_bin': "__run", 'opt_var_name': "CCC_OPTS", "opt_prepend":["-O0 "]})
     env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), ObjSizeBytesRewardMetrics()])
@@ -380,7 +380,7 @@ def test_gnumake():
 
 
 def cbench_env(name, mode="default", settings=None):
-    gbm = gcc_benchmark(build_mode=Buildmode.MAKE)
+    gbm = standalone_benchmark(build_mode=Buildmode.MAKE)
     placement = "third_party/cbench/cBench_V1.1/bzip2d/src"
     if name == "bzip2d":
         placement = "third_party/cbench/cBench_V1.1/bzip2d/src"
@@ -395,7 +395,7 @@ def cbench_env(name, mode="default", settings=None):
 
 
 def test_makebydriver_gcc():
-    gbm = gcc_benchmark(build_mode=Buildmode.GCC_DRIVER)
+    gbm = standalone_benchmark(build_mode=Buildmode.GCC_DRIVER)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c"])
     env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()])
     state = env.reset()
@@ -403,7 +403,7 @@ def test_makebydriver_gcc():
 
 
 def test_makeby_clang_llvm():
-    gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
+    gbm = standalone_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'], names=["program.c", "1.c"])
     env = CompilerEnv(benchmark=gbm, reward_spaces=[RuntimeRewardMetrics(), TextSizeBytesRewardMetrics()], action_space=actions_oz_extra)
     state = env.reset()
@@ -414,7 +414,7 @@ def test_makeby_clang_llvm():
 def tune_by_clang_llvm_cbench(name="gsm", action_space=actions_oz_extra, sys_settings={}):
     print("Tuning for cbench test", name)
     cbench_test_path = bench_configs.cbench[name]["src"]
-    gbm = gcc_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
+    gbm = standalone_benchmark(build_mode=Buildmode.LLVM_PIPELINE)
     sys_settings.update({'run_working_dir': cbench_test_path,
                          'extra_compiler_flags': bench_configs.cbench[name]["extra_c_flags"]})
     gbm.make_benchmark(tmpdir=FLAGS['tmpdir'],
