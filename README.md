@@ -16,6 +16,10 @@ Tools for manipulation with order-dependency graphs (ODG), which are frequently 
 
 Tools for manipulation with CompilerGym. Note: downstream ver. of CompilerGym is used (includes Ir2Vec patch, etc).
 
+### llvm_pass_shuffle_newpm
+
+Scratch for iterative compilation with pass shuffling for llvm-15 new PM 
+
 ### experiment_runner
 
 Script for running search / RL experiments from this scope:
