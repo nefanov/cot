@@ -1,6 +1,7 @@
 import random as rnd
 import os
 import sys
+import json
 from subprocess import *
 from time import perf_counter
 
@@ -12,6 +13,10 @@ defconf = {
     "run_opts":'-d -k -f -c ../../bzip2_data/1.bz2 > /dev/null',
     "passes": 'passes/O2.txt',
 }
+
+def update_defconf(data={}):
+    defconf = data
+
 
 def run_opt_and_compile(passes, legacy=False):
     files = [i[:-3] for i in os.listdir(defconf["bc_files_path"])]
@@ -99,7 +104,7 @@ def expand_pass(string):
     return string
 
 
-if __name__ == '__main__':
+def run_shuffler():
     passes = import_passes(defconf["passes"], expand=True)
     run_opt_and_compile(passes)
     baseline_size = int(run('size '+ defconf["bin_name"], shell=True, capture_output=True).stdout.split()[6])
@@ -149,3 +154,12 @@ if __name__ == '__main__':
 
     f_log.close()
 
+
+if __name__ == '__main__':
+    if len(sys.argv) > 2 and sys.argv[1] in ['-c','--configfile']:
+        try:
+            with open(sys.argv[2]) as json_file:
+                update_defconf(json.load(json_file))
+        except Exception as E:
+            print("failed to set default config from file", sys.argv[2],"with", E,"\nContinuing with default config...")
+    run_shuffler()
