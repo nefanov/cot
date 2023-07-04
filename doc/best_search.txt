@@ -1,0 +1,209 @@
+PATRICIA:
+Iteration 99 statistics:
+Max size gain on sequence:
+('-dse', 0.11337868480725624)
+('-jump-threading', 0.4540295119182747)
+('-sroa', 0.9122006841505131)
+('-sccp', 14.844649021864212)
+('-adce', 2.1621621621621623)
+('-jump-threading', 5.524861878453039)
+('-adce', 0.5847953216374269)
+('-simplifycfg', 0.7352941176470588)
+('-prune-eh', 0.0)
+('-jump-threading', 0.0)
+('-adce', 0.0)
+Total size gain: 23.46938775510204 %
+Total perf diff: [11.95205479] %
+
+
+
+GSM:
+
+('-prune-eh', 0.022472225733507493)
+('-mem2reg', 8.148012868241013)
+('-simplifycfg', 6.9742899530459)
+('-aggressive-instcombine', 0.013152919125988522)
+('-instcombine', 0.09208254542464853)
+('-simplifycfg', 4.871706249279942)
+('-jump-threading', 0.16609283897645288)
+('-simplifycfg', 0.027728194374642568)
+('-instcombine', 0.33283062041707834)
+('-loop-rotate', 0.12522828072006262)
+('-simplifycfg', 1.0306586117446335)
+('-instcombine', 0.2110929336640456)
+('-deadargelim', 0.1128210552294322)
+('-dse', 0.960062121666696)
+Total size gain: 21.18007275383081 %
+Total perf diff: [25.0577651] %
+
+BLOWFISH:
+
+Iteration 99 statistics:
+Max size gain on sequence:
+('-dse', 1.3748657357679914)
+('-aggressive-instcombine', 0.17425397516880856)
+('-instcombine', 9.126118263146411)
+('-mem2reg', 11.045080737139084)
+('-jump-threading', 0.8637559889331264)
+('-dse', 0.21782043427949083)
+('-sroa', 4.6933624394569895)
+('-reassociate', 0.11452294037649416)
+('-gvn-hoist', 0.11465424579003942)
+('-simplifycfg', 2.8696463160915417)
+('-sccp', 0.0)
+('-loop-versioning', 0.0)
+('-sccp', 0.0)
+Total size gain: 27.287862513426425 %
+Total perf diff: [-17.83741121] %
+
+BZIP2:
+Iteration 99 statistics:
+Max size gain on sequence:
+('-aggressive-instcombine', 0.11302805293480478)
+('-prune-eh', 0.012572883433654465)
+('-dce', 0.03772339321922007)
+('-instcombine', 3.0536031573816373)
+('-mergefunc', 0.0908279944854432)
+('-loop-rotate', 1.3376840533125538)
+('-dse', 0.026326614561908677)
+('-simplifycfg', 1.1455093072631215)
+('-dse', 0.03995804405374357)
+('-deadargelim', 0.039974016889022135)
+('-instcombine', 1.5796050987253187)
+('-simplifycfg', 0.013543941625611594)
+Total size gain: 7.287169746157832 %
+Total perf diff: [18.14637933] %
+
+QSORT:
+
+('-simplifycfg', 1.6457519029006378)
+('-instcombine', 0.7529805480025099)
+('-dse', 0.3371970495258167)
+('-simplifycfg', 1.0150137449777965)
+('-mem2reg', 0.5127109591967528)
+('-instcombine', 0.687137642258965)
+('-aggressive-instcombine', 0.0)
+('-deadargelim', 0.0)
+Total size gain: 4.854968113556881 %
+Total perf diff: [31.62621331] %
+
+CRC32
+
+Iteration 99 statistics:
+Max size gain on sequence:
+('-instcombine', 0.3508771929824561)
+('-simplifycfg', 0.5633802816901409)
+('-dse', 0.56657223796034)
+('-dse', 0.0)
+('-aggressive-instcombine', 0.0)
+('-prune-eh', 0.0)
+Total size gain: 1.4736842105263157 %
+Total perf diff: [42.80814086] %
+
+cbench-v1.1 subsequences:
+
+actions,test,freq
+"['-instcombine', '-deadargelim', '-dse', '-jump-threading']",['stringsearch'],1
+"['-instcombine', '-simplifycfg', '-mem2reg', '-sccp']","['gsm', 'sha']",2
+"['-instcombine', '-mem2reg', '-instcombine', '-simplifycfg']","['gsm', 'sha']",2
+"['-jump-threading', '-instcombine', '-mem2reg', '-simplifycfg']","['gsm', 'stringsearch']",2
+"['-mergefunc', '-prune-eh', '-simplifycfg', '-dse']","['bzip2', 'sha']",2
+"['-deadargelim', '-instcombine', '-dse', '-adce']","['bzip2', 'qsort']",2
+"['-instcombine', '-mem2reg', '-simplifycfg', '-instcombine']","['gsm', 'stringsearch', 'sha']",3
+"['-instcombine', '-simplifycfg', '-instcombine', '-mem2reg']","['gsm', 'sha', 'qsort']",3
+"['-instcombine', '-simplifycfg', '-dse', '-instcombine', '-mem2reg']","['gsm', 'stringsearch', 'crc32']",3
+"['-dse', '-instcombine', '-simplifycfg', '-instcombine', '-mem2reg']","['gsm', 'sha', 'crc32']",3
+"['-mem2reg', '-simplifycfg', '-instcombine', '-dse']","['gsm', 'stringsearch', 'qsort']",3
+"['-deadargelim', '-instcombine', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'tiff2bw']",3
+"['-dse', '-instcombine', '-dse', '-adce']","['gsm', 'tiff2bw', 'qsort']",3
+"['-simplifycfg', '-dse', '-instcombine', '-mem2reg', '-simplifycfg', '-instcombine']","['gsm', 'stringsearch', 'tiff2bw']",3
+"['-instcombine', '-simplifycfg', '-instcombine', '-mem2reg', '-instcombine', '-simplifycfg']","['gsm', 'sha', 'qsort']",3
+"['-simplifycfg', '-dse', '-instcombine', '-mem2reg', '-simplifycfg']","['gsm', 'qsort', 'crc32']",3
+"['-dse', '-instcombine', '-deadargelim', '-simplifycfg']","['gsm', 'bzip2', 'qsort']",3
+"['-dse', '-simplifycfg', '-instcombine', '-mem2reg', '-simplifycfg', '-instcombine']","['gsm', 'stringsearch', 'qsort']",3
+"['-jump-threading', '-instcombine', '-mem2reg', '-simplifycfg', '-instcombine']","['gsm', 'sha', 'qsort']",3
+"['-dse', '-simplifycfg', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'qsort']",3
+"['-sroa', '-simplifycfg', '-jump-threading', '-instcombine']","['gsm', 'sha', 'qsort']",3
+"['-instcombine', '-simplifycfg', '-dse', '-instcombine', '-dse']","['gsm', 'bzip2', 'qsort']",3
+"['-deadargelim', '-instcombine', '-dse', '-jump-threading']","['gsm', 'bzip2', 'qsort']",3
+"['-deadargelim', '-jump-threading', '-simplifycfg', '-dse']","['bzip2', 'qsort', 'crc32']",3
+"['-dse', '-adce', '-deadargelim', '-instcombine']","['stringsearch', 'tiff2bw', 'qsort']",3
+"['-dse', '-instcombine', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw']",4
+"['-sroa', '-jump-threading', '-deadargelim', '-simplifycfg']","['gsm', 'sha', 'qsort', 'crc32']",4
+"['-instcombine', '-simplifycfg', '-instcombine', '-dse']","['gsm', 'tiff2bw', 'sha', 'qsort']",4
+"['-simplifycfg', '-dse', '-instcombine', '-dse']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-deadargelim', '-instcombine', '-adce', '-dse']","['gsm', 'stringsearch', 'tiff2bw', 'qsort']",4
+"['-simplifycfg', '-dse', '-instcombine', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-dse', '-instcombine', '-simplifycfg', '-instcombine', '-mem2reg', '-instcombine', '-simplifycfg']","['gsm', 'stringsearch', 'sha', 'qsort']",4
+"['-jump-threading', '-deadargelim', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-prune-eh', '-deadargelim', '-instcombine', '-dse']","['gsm', 'bzip2', 'qsort', 'crc32']",4
+"['-simplifycfg', '-aggressive-instcombine', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'qsort']",4
+"['-mergefunc', '-aggressive-instcombine', '-prune-eh', '-instcombine']","['gsm', 'bzip2', 'qsort', 'crc32']",4
+"['-instcombine', '-simplifycfg', '-loop-rotate', '-jump-threading']","['gsm', 'bzip2', 'qsort', 'crc32']",4
+"['-mergefunc', '-instcombine', '-simplifycfg', '-dse']","['gsm', 'bzip2', 'stringsearch', 'qsort']",4
+"['-deadargelim', '-dse', '-instcombine', '-adce']","['gsm', 'bzip2', 'sha', 'qsort']",4
+"['-jump-threading', '-deadargelim', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-dse', '-instcombine', '-jump-threading', '-mem2reg']","['gsm', 'stringsearch', 'tiff2bw', 'qsort']",4
+"['-dse', '-newgvn', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-instcombine', '-simplifycfg', '-dse', '-deadargelim']","['gsm', 'bzip2', 'stringsearch', 'qsort']",4
+"['-instcombine', '-loop-rotate', '-instcombine', '-dse']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-instcombine', '-simplifycfg', '-dse', '-sccp']","['gsm', 'bzip2', 'stringsearch', 'qsort']",4
+"['-deadargelim', '-jump-threading', '-simplifycfg', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-simplifycfg', '-instcombine', '-mem2reg', '-simplifycfg', '-instcombine']","['gsm', 'stringsearch', 'qsort', 'crc32']",4
+"['-instcombine', '-deadargelim', '-simplifycfg', '-dse']","['gsm', 'bzip2', 'sha', 'qsort']",4
+"['-mergefunc', '-jump-threading', '-dse', '-instcombine']","['gsm', 'bzip2', 'stringsearch', 'qsort']",4
+"['-instcombine', '-jump-threading', '-instcombine', '-deadargelim']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-instcombine', '-adce', '-prune-eh', '-dse']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-mem2reg', '-sccp', '-jump-threading', '-simplifycfg']","['gsm', 'tiff2bw', 'qsort', 'patricia']",4
+"['-instcombine', '-dse', '-adce', '-deadargelim', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort']",4
+"['-instcombine', '-dse', '-adce', '-deadargelim']","['gsm', 'bzip2', 'stringsearch', 'qsort']",4
+"['-dse', '-jump-threading', '-mem2reg', '-simplifycfg']","['gsm', 'stringsearch', 'sha', 'qsort']",4
+"['-aggressive-instcombine', '-reassociate', '-mem2reg', '-instcombine']","['gsm', 'stringsearch', 'sha', 'qsort']",4
+"['-simplifycfg', '-instcombine', '-dse', '-mem2reg']","['gsm', 'stringsearch', 'tiff2bw', 'qsort']",4
+"['-jump-threading', '-simplifycfg', '-instcombine', '-dse']","['bzip2', 'stringsearch', 'tiff2bw', 'sha']",4
+"['-adce', '-dse', '-deadargelim', '-instcombine']","['bzip2', 'stringsearch', 'sha', 'qsort']",4
+"['-jump-threading', '-aggressive-instcombine', '-simplifycfg', '-deadargelim']","['bzip2', 'tiff2bw', 'sha', 'qsort']",4
+"['-instcombine', '-simplifycfg', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort', 'crc32']",5
+"['-simplifycfg', '-dse', '-instcombine', '-mem2reg']","['gsm', 'tiff2bw', 'sha', 'qsort', 'crc32']",5
+"['-instcombine', '-simplifycfg', '-instcombine', '-deadargelim']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort']",5
+"['-simplifycfg', '-instcombine', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort', 'crc32']",5
+"['-instcombine', '-prune-eh', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort']",5
+"['-instcombine', '-adce', '-dse', '-prune-eh']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'crc32']",5
+"['-dse', '-instcombine', '-dse', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'sha', 'crc32']",5
+"['-simplifycfg', '-instcombine', '-dse', '-deadargelim']","['gsm', 'bzip2', 'stringsearch', 'qsort', 'crc32']",5
+"['-mem2reg', '-simplifycfg', '-aggressive-instcombine', '-instcombine']","['gsm', 'stringsearch', 'sha', 'qsort', 'crc32']",5
+"['-instcombine', '-deadargelim', '-simplifycfg', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort']",5
+"['-dse', '-jump-threading', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'qsort', 'crc32']",5
+"['-jump-threading', '-instcombine', '-reassociate', '-loop-rotate']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort']",5
+"['-simplifycfg', '-instcombine', '-dse', '-simplifycfg']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort']",5
+"['-adce', '-deadargelim', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort']",5
+"['-deadargelim', '-dse', '-instcombine', '-prune-eh']","['gsm', 'bzip2', 'sha', 'qsort', 'crc32']",5
+"['-jump-threading', '-dse', '-instcombine', '-deadargelim', '-jump-threading']","['gsm', 'bzip2', 'sha', 'qsort', 'crc32']",5
+"['-instcombine', '-dse', '-simplifycfg', '-instcombine', '-dse']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort']",5
+"['-simplifycfg', '-instcombine', '-simplifycfg', '-deadargelim']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort']",5
+"['-simplifycfg', '-dse', '-instcombine', '-prune-eh']","['gsm', 'bzip2', 'stringsearch', 'qsort', 'crc32']",5
+"['-dse', '-sccp', '-die', '-jump-threading']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'crc32']",5
+"['-dse', '-instcombine', '-adce', '-dse']","['bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort']",5
+"['-instcombine', '-prune-eh', '-dse', '-instcombine']","['bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",5
+"['-deadargelim', '-mergefunc', '-instcombine', '-dse']","['bzip2', 'stringsearch', 'tiff2bw', 'sha', 'crc32']",5
+"['-dse', '-instcombine', '-jump-threading', '-simplifycfg']","['bzip2', 'stringsearch', 'tiff2bw', 'sha', 'crc32']",5
+"['-simplifycfg', '-dse', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort', 'crc32']",6
+"['-instcombine', '-dse', '-simplifycfg', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",6
+"['-deadargelim', '-simplifycfg', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort']",6
+"['-instcombine', '-deadargelim', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",6
+"['-simplifycfg', '-instcombine', '-deadargelim', '-dse']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort', 'crc32']",6
+"['-instcombine', '-adce', '-dse', '-deadargelim']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",6
+"['-instcombine', '-mergefunc', '-prune-eh', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",6
+"['-deadargelim', '-instcombine', '-simplifycfg', '-dse']","['gsm', 'bzip2', 'stringsearch', 'sha', 'qsort', 'crc32']",6
+"['-deadargelim', '-instcombine', '-jump-threading', '-dse', '-instcombine']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",6
+"['-deadargelim', '-dse', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'tiff2bw', 'sha', 'qsort', 'crc32']",6
+"['-instcombine', '-jump-threading', '-dse', '-instcombine']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort']",6
+"['-sccp', '-instcombine', '-dse', '-adce']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort', 'crc32']",6
+"['-instcombine', '-prune-eh', '-adce', '-dse']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'qsort', 'crc32']",6
+"['-simplifycfg', '-dse', '-instcombine', '-jump-threading']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort']",6
+"['-instcombine', '-simplifycfg', '-instcombine', '-mergefunc']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort', 'crc32']",7
+"['-simplifycfg', '-deadargelim', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort', 'crc32']",7
+"['-prune-eh', '-simplifycfg', '-instcombine', '-simplifycfg']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort', 'crc32']",7
+"['-deadargelim', '-jump-threading', '-dse', '-instcombine']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort', 'crc32']",7
+"['-mergefunc', '-deadargelim', '-instcombine', '-dse']","['gsm', 'bzip2', 'stringsearch', 'tiff2bw', 'sha', 'qsort', 'crc32']",7
+
